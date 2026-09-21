@@ -24,9 +24,15 @@ function skillFile(name, { description = GOOD_DESCRIPTION, body = "# heading\n" 
   return `---\nname: ${name}\ndescription: ${description}\nlicense: MIT\n---\n\n${body}`;
 }
 
-function readmeFor(names) {
+function readmeFor(names, install = "") {
   const index = names.map((name) => `- [${name}](./skills/${name}/SKILL.md): a skill.`);
-  return `# verbatra skills\n\n## Skills\n\n${index.join("\n")}\n`;
+  return `# verbatra skills\n\n## Skills\n\n${index.join("\n")}\n${install}`;
+}
+
+const FULL_SHA = "ae31c921872cad8f70989ef75ad43064b6ffb1bd";
+
+function installLine(ref) {
+  return `\n## Install\n\nnpx skills@latest add verbatra/skills#${ref} --skill verbatra-cli\n`;
 }
 
 function fixture(files) {
@@ -57,6 +63,28 @@ describe("the validator accepts a well-formed repository", () => {
 
   it("reports no failures for this repository", () => {
     expect(validateSkills(REPO_ROOT)).toEqual([]);
+  });
+
+  it("accepts a pin to a tag, which the installer resolves as a ref", () => {
+    const root = validFixture({
+      "README.md": readmeFor(["verbatra-cli"], installLine("v0.1.0")),
+    });
+    expect(validateSkills(root)).toEqual([]);
+  });
+
+  it("accepts a pin to a full 40-character commit SHA", () => {
+    const root = validFixture({
+      "README.md": readmeFor(["verbatra-cli"], installLine(FULL_SHA)),
+      "CONTRIBUTING.md": `# Contributing\n\nPin with verbatra/skills#${FULL_SHA}.\n`,
+    });
+    expect(validateSkills(root)).toEqual([]);
+  });
+
+  it("ignores a bare hex fragment that is not attached to a repository slug", () => {
+    const root = validFixture({
+      "README.md": readmeFor(["verbatra-cli"], "\nA short ref such as #0a1b2c3 fails.\n"),
+    });
+    expect(validateSkills(root)).toEqual([]);
   });
 
   it("exits zero for this repository", () => {
@@ -222,6 +250,24 @@ describe("every rule fires with a precise message", () => {
   it("rule 16: a repository with no skills directory", () => {
     const root = fixture({ "README.md": "# empty\n" });
     expect(validateSkills(root)).toEqual([`${root}: there is no skills/ directory`]);
+  });
+
+  it("rule 17: a README pinning an abbreviated commit SHA", () => {
+    const root = validFixture({
+      "README.md": readmeFor(["verbatra-cli"], installLine("0a1b2c3")),
+    });
+    expect(validateSkills(root)).toContain(
+      "README.md:9: pins verbatra/skills#0a1b2c3, a hex ref of 7 characters; the skills installer resolves a bare commit only when it is a full 40-character SHA, so an abbreviated one fails to clone; pin a tag or the full SHA instead",
+    );
+  });
+
+  it("rule 18: a CONTRIBUTING.md pinning an abbreviated commit SHA", () => {
+    const root = validFixture({
+      "CONTRIBUTING.md": "# Contributing\n\nPin a release with verbatra/skills#deadbeef.\n",
+    });
+    expect(validateSkills(root)).toContain(
+      "CONTRIBUTING.md:3: pins verbatra/skills#deadbeef, a hex ref of 8 characters; the skills installer resolves a bare commit only when it is a full 40-character SHA, so an abbreviated one fails to clone; pin a tag or the full SHA instead",
+    );
   });
 });
 

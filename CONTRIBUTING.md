@@ -36,6 +36,9 @@ Requirements: Node.js `>=22.14.0` and `npm ci` once.
 House rules, enforced by the validator: English only, no emoji, and the em dash character U+2014
 must never appear. Use a spaced hyphen, a colon, or parentheses instead. Tracked files must be
 ordinary files; a symlink or a submodule cannot be installed by the skills CLI and is rejected.
+A `#` pin written into `README.md` or `CONTRIBUTING.md` must be a tag or a full 40-character
+commit SHA; an abbreviated SHA is rejected, because the installer cannot resolve one (see
+"Releases").
 
 ## The parity rule
 
@@ -74,7 +77,7 @@ npm ci
 The offline checks, which are what `validate.yml` runs:
 
 ```bash
-npm run validate   # frontmatter, naming, file modes, house style, README index parity
+npm run validate   # frontmatter, naming, file modes, house style, pinned refs, README index
 npm test           # the validator's own fixture suite, one fixture per rule
 ```
 
@@ -111,12 +114,27 @@ npx skills@latest add /path/to/your/skills --skill verbatra-cli -a claude-code -
 ## Releases
 
 There is no release flow and no published package. The installer resolves a git ref, so the
-"release" of a skill is the commit on `main`, and a consumer who wants a fixed version pins one
-with the `#` fragment (`verbatra/skills#<sha>`). If a versioned changelog is ever wanted, the way
-to add it is changesets with a private root `package.json`: `npx changeset` per change, a version
-pull request, and `npx changeset tag` to cut the git tag that consumers would then pin. Nothing in
-the current layout blocks that; it is deliberately not set up, because three skills with no
-published artifact do not yet earn the ceremony.
+"release" of a skill is a commit on `main`, and a consumer who wants a fixed version pins one with
+the `#` fragment.
+
+Two forms freeze, and one form that looks like it should does not:
+
+- A **tag** freezes. It is the form to hand a reader, because it is short enough to survive a
+  diff review: `verbatra/skills#v0.1.0`.
+- A **full 40-character commit SHA** freezes, and is the form for a commit that was never tagged.
+- An **abbreviated SHA fails outright**. The installer clones with
+  `git clone --depth 1 --branch <ref>` and retries as a bare commit only when the ref matches
+  `/^[0-9a-f]{40}$/i`, so a short SHA is tried as a branch name and the install dies with
+  `fatal: Remote branch ... not found in upstream origin`. Never write one into a document here;
+  `npm run validate` rejects a hex ref fragment that is not exactly 40 characters.
+
+A branch name resolves, but it tracks that branch's tip rather than freezing, so it is not a pin.
+
+Cutting a tag is the whole release: `git tag v0.2.0 <commit> && git push origin v0.2.0`. If a
+versioned changelog is ever wanted on top of that, the way to add it is changesets with a private
+root `package.json`: `npx changeset` per change, a version pull request, and `npx changeset tag` to
+cut the same git tag. Nothing in the current layout blocks that; it is deliberately not set up,
+because three skills with no published artifact do not yet earn the ceremony.
 
 ## Commits and pull requests
 
