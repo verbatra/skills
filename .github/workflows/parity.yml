@@ -18,7 +18,9 @@ on:
     types: [source-changed]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: >-
+    ${{ github.workflow }}-${{ github.ref }}-${{ inputs.source_ref ||
+    github.event.client_payload.source_ref || 'main' }}
   cancel-in-progress: true
 
 permissions:
