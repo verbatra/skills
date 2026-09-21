@@ -15,6 +15,9 @@ const EM_DASH = "\u2014";
 const EMOJI_PATTERN = /\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}]|\uFE0F/gu;
 const SCAN_SKIPPED = new Set(["package-lock.json", "LICENSE"]);
 const BINARY_EXTENSIONS = /\.(png|jpe?g|gif|webp|ico|svg|pdf|zip|woff2?|ttf)$/i;
+const PIN_DOCUMENTS = ["README.md", "CONTRIBUTING.md"];
+const PINNED_REF_PATTERN = /\b([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)#([0-9a-fA-F]+)\b/g;
+const FULL_SHA_LENGTH = 40;
 
 function readSkillDirectories(root) {
   const skillsRoot = resolve(root, "skills");
@@ -163,6 +166,30 @@ function checkSkill(root, name, declaredBy, fail) {
   }
 }
 
+function checkPinnedRefs(root, fail) {
+  for (const relativePath of PIN_DOCUMENTS) {
+    let content;
+    try {
+      content = readFileSync(resolve(root, relativePath), "utf8");
+    } catch {
+      continue;
+    }
+    content.split("\n").forEach((line, index) => {
+      for (const match of line.matchAll(PINNED_REF_PATTERN)) {
+        if (match[2].length === FULL_SHA_LENGTH) {
+          continue;
+        }
+        fail(
+          `${relativePath}:${index + 1}: pins ${match[1]}#${match[2]}, a hex ref of ` +
+            `${match[2].length} characters; the skills installer resolves a bare commit only ` +
+            `when it is a full ${FULL_SHA_LENGTH}-character SHA, so an abbreviated one fails ` +
+            "to clone; pin a tag or the full SHA instead",
+        );
+      }
+    });
+  }
+}
+
 function checkReadmeIndex(root, names, fail) {
   const relativePath = "README.md";
   let readme;
@@ -229,6 +256,7 @@ export function validateSkills(root) {
   }
 
   checkReadmeIndex(root, names, fail);
+  checkPinnedRefs(root, fail);
   return failures;
 }
 
