@@ -1,0 +1,77 @@
+name: Tool parity
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+    inputs:
+      source-ref:
+        description: The verbatra/verbatra ref to assert the skills against.
+        required: false
+        default: main
+        type: string
+  repository_dispatch:
+    types: [source-changed]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    name: Assert the skill tables against the source registries
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      SOURCE_REF: ${{ inputs.source-ref || github.event.client_payload.source-ref || 'main' }}
+    steps:
+      - name: Checkout the skills
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: skills
+          persist-credentials: false
+
+      - name: Checkout the source registries
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: verbatra/verbatra
+          ref: ${{ env.SOURCE_REF }}
+          path: verbatra
+          persist-credentials: false
+          sparse-checkout: |
+            packages/cli
+            packages/mcp
+            packages/studio
+            packages/core
+            packages/sdk
+            packages/ai-providers
+
+      - name: Report the source commit
+        working-directory: verbatra
+        run: git log -1 --format='%H %s'
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.14.0
+          cache: npm
+          cache-dependency-path: skills/package-lock.json
+
+      - name: Install
+        working-directory: skills
+        run: npm ci
+
+      - name: Assert tool parity
+        working-directory: skills
+        env:
+          SOURCE_ROOT: ../verbatra
+        run: npm run test:parity
