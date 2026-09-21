@@ -1,6 +1,6 @@
 ---
 name: verbatra-studio-agent-tools
-description: Operate a verbatra i18n project from an open Verbatra Studio dashboard tab through its WebMCP browser tools, the ones named verbatra_project_snapshot, verbatra_status_check, verbatra_status_diff, verbatra_locale_values, verbatra_history_list, verbatra_translation_editEntry and their siblings. Use when a browser agent is driving the Studio dashboard and translation status has to be read, a key is missing or stale in a target locale, translation values have to be scanned in bulk, who last changed a locale file has to be found, or a translation has to be corrected in place. Also use when the Studio tools are absent or a provider-spending tool is missing from the set.
+description: Operate a verbatra i18n project from an open Verbatra Studio dashboard tab through its WebMCP browser tools. Use when a browser agent is driving the Studio dashboard and translation status has to be read, a key is missing or stale in a target locale, translation values have to be scanned in bulk, who last changed a locale file has to be found, or a translation has to be corrected in place. Also use when the Studio tools are absent from the tab, or a provider-spending tool is missing from the set. Covers the whole tool set, the two gates that decide which tools register, and the traps specific to driving a browser tab.
 license: MIT
 metadata:
   source: 'https://github.com/verbatra/skills'

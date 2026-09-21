@@ -1,6 +1,6 @@
 ---
 name: verbatra-mcp-tools
-description: Operate a verbatra i18n project through the verbatra stdio MCP server, the tools named project.snapshot, status.check, status.diff, glossary.get, glossary.write, lock.state, key.integrity, key.value, translation.editEntry, translation.retranslateEntry, translation.translatePending, review.queue and usage.summary. Use when an MCP client is connected to a verbatra server and translation status has to be read, a key is missing or stale in a target locale, a translation has to be corrected or re-run, a glossary term has to be added, or the review queue and token usage of the last run have to be reported. Also use when a provider-spending tool appears to be absent.
+description: Operate a verbatra i18n project through the verbatra stdio MCP server, the one a verbatra mcp process serves over stdio. Use when an MCP client is connected to a verbatra server and translation status has to be read, a key is missing or stale in a target locale, a translation has to be corrected or re-run, a glossary term has to be added, or the review queue and token usage of the last run have to be reported. Also use when a provider-spending tool appears to be absent from the tool list. Covers every registered tool, the spend boundary that keeps some of them off the default list, and what each result means.
 license: MIT
 metadata:
   source: 'https://github.com/verbatra/skills'
