@@ -295,6 +295,28 @@ function studioToolName(method) {
   return `verbatra_${method.replaceAll(".", "_")}`;
 }
 
+const DESCRIPTION_NAME_BUDGET = 2;
+
+function surfaceIdentifiers(path) {
+  if (path === CLI_SKILL) {
+    return cliCommands();
+  }
+  if (path === MCP_SKILL) {
+    return mcpRegistry().all;
+  }
+  const methods = studioRpcMethods();
+  return [...methods, ...methods.map(studioToolName)];
+}
+
+function identifiersNamedIn(description, identifiers) {
+  return identifiers
+    .filter((identifier) => {
+      const escaped = identifier.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`(?<![\\w.-])${escaped}(?![\\w-])(?!\\.\\w)`).test(description);
+    })
+    .sort();
+}
+
 const NUMBER_WORDS = [
   "zero",
   "one",
@@ -346,6 +368,20 @@ describe("every skill in the pack carries installable frontmatter", () => {
 
   it.each(SKILL_FILES)("%s repeats the shared safety rules verbatim", (path) => {
     expect(readSkillFile(path)).toContain(SHARED_SAFETY_BLOCK);
+  });
+});
+
+describe("a description triggers loading; the body table is what indexes the surface", () => {
+  it.each(SKILL_FILES)("%s does not enumerate the surface it documents", (path) => {
+    const { description } = frontmatter(readSkillFile(path));
+    const named = identifiersNamedIn(description, surfaceIdentifiers(path));
+    expect(
+      named.length,
+      `${path} names ${named.length} real identifiers in its description ` +
+        `(${named.join(", ")}). A description carries the trigger conditions, not an index: ` +
+        "the body table already lists every name, and this suite already asserts that table " +
+        "against the registry, so a second hand-kept copy can only drift out of it.",
+    ).toBeLessThanOrEqual(DESCRIPTION_NAME_BUDGET);
   });
 });
 

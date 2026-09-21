@@ -27,6 +27,14 @@ Requirements: Node.js `>=22.14.0` and `npm ci` once.
    what an agent reads to decide whether to load the skill, so it carries the trigger conditions,
    not just a label; it is capped at 1024 characters. `metadata.source` always points at this
    repository.
+
+   **A description triggers loading; it does not index the surface.** Write the one-line summary,
+   the "Use when ..." trigger conditions, and a closing clause naming what the skill covers in
+   the abstract ("every command the verbatra binary registers"). Do not list the commands, tool
+   names or RPC methods: the body table already lists every one of them, the parity suite already
+   asserts that table against the registry, and a second hand-kept copy in the frontmatter can
+   only drift out of it. `scripts/verify-tool-parity.test.mjs` enforces this, allowing a
+   description to anchor on at most two real identifiers before it counts as an enumeration.
 3. Add the bullet to the `## Skills` section of `README.md`. The validator fails if a skill is
    missing from the index, and fails if the index names a skill that does not exist.
 4. If the skill enumerates a real surface (commands, formats, providers, tool names, RPC methods),
@@ -55,6 +63,7 @@ compares them to the tables and the spelled-out counts in the three skill docume
 | `## Tools` table in `verbatra-mcp-tools` | `ALL_TOOLS_IN_ORDER` and `SPEND_TOOL_NAMES` in `packages/mcp/src/tools/registry.ts`, cross-checked against every `name:` declared under `packages/mcp/src/tools/` |
 | `## Tools` table in `verbatra-studio-agent-tools` | `rpcParamsSchemas` in `packages/studio/src/shared/rpc/contract.ts`, the `*_METHOD` constants beside it, and the `spendGated` descriptors in `packages/studio/src/webmcp/register-tools.ts` |
 | Counts spelled out in prose ("one of these fourteen", "registers ... but advertises only ...") | derived from the same registries, never remembered |
+| Frontmatter `description` in all three skills | the same registries, asserted negatively: a description must name at most two real identifiers, so it cannot grow back into a stale second index |
 
 Why it exists: a skills pack is prose an agent trusts. Without a guard, the first renamed tool or
 added format turns that prose into confident, wrong instructions, and nothing fails. The guard is
