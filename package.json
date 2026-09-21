@@ -1,0 +1,25 @@
+{
+  "name": "verbatra-skills",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Agent skills for verbatra, the i18n translation automation tool.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/verbatra/skills.git"
+  },
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "scripts": {
+    "validate": "node scripts/validate-skills.mjs",
+    "test": "vitest run scripts/validate-skills.test.mjs",
+    "test:parity": "vitest run scripts/verify-tool-parity.test.mjs",
+    "check:discovery": "node scripts/check-discovery.mjs"
+  },
+  "devDependencies": {
+    "vitest": "3.2.4",
+    "yaml": "2.8.1"
+  }
+}
