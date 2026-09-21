@@ -9,7 +9,7 @@ on:
     - cron: "17 4 * * *"
   workflow_dispatch:
     inputs:
-      source-ref:
+      source_ref:
         description: The verbatra/verbatra ref to assert the skills against.
         required: false
         default: main
@@ -32,7 +32,7 @@ jobs:
     permissions:
       contents: read
     env:
-      SOURCE_REF: ${{ inputs.source-ref || github.event.client_payload.source-ref || 'main' }}
+      SOURCE_REF: ${{ inputs.source_ref || github.event.client_payload.source_ref || 'main' }}
     steps:
       - name: Checkout the skills
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
