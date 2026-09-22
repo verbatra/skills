@@ -1,0 +1,49 @@
+name: Skill request
+description: Suggest a new skill, or coverage an existing skill is missing.
+title: "[Request]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What are you requesting?
+      options:
+        - Coverage an existing skill is missing
+        - A new skill
+    validations:
+      required: true
+
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Existing skill (if relevant)
+      options:
+        - Not applicable
+        - verbatra-cli
+        - verbatra-mcp-tools
+        - verbatra-studio-agent-tools
+    validations:
+      required: false
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What did the agent get wrong or fail to do without this, and in which situation should it load the skill?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed content
+      description: What the skill should tell the agent, and which verbatra surface (command, MCP tool, Studio tool) it covers.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+    validations:
+      required: false
