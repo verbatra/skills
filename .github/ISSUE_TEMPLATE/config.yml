@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: verbatra CLI, SDK, Studio, or MCP server bug
+    url: https://github.com/verbatra/verbatra/issues/new/choose
+    about: The skill describes verbatra correctly but verbatra itself misbehaves. That lives in the main repository, which is where a fix would ship.
+  - name: Question or idea
+    url: https://github.com/verbatra/verbatra/discussions
+    about: Use GitHub Discussions in the main repository for questions and general discussion.
+  - name: Documentation
+    url: https://verbatra.kreitz-webdev.de
+    about: The verbatra guides, CLI reference, and configuration docs the skills are written against.
+  - name: Security vulnerability
+    url: https://github.com/verbatra/skills/security/advisories/new
+    about: Report privately through GitHub's private vulnerability reporting. Do not open a public issue for a vulnerability.

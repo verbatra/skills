@@ -1,0 +1,82 @@
+name: Skill is wrong or out of date
+description: A skill tells an agent something that does not match what verbatra actually does.
+title: "[Skill]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when a skill document is wrong: a command, flag, format, provider, tool, or exit code it describes does not match verbatra, or an agent following it does the wrong thing. If verbatra itself is broken, open the issue in the [main repository](https://github.com/verbatra/verbatra/issues/new/choose) instead.
+
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Skill
+      options:
+        - verbatra-cli
+        - verbatra-mcp-tools
+        - verbatra-studio-agent-tools
+    validations:
+      required: true
+
+  - type: input
+    id: ref
+    attributes:
+      label: Installed ref
+      description: The tag or full commit SHA you installed (the `#` fragment of `verbatra/skills#...`), or `main` if you did not pin one. Your `skills-lock.json` records it.
+      placeholder: v0.2.0
+    validations:
+      required: true
+
+  - type: input
+    id: verbatra-version
+    attributes:
+      label: verbatra version
+      description: The `@verbatra/cli`, `@verbatra/mcp`, or `@verbatra/studio` version the agent was driving. Run `verbatra --version`.
+      placeholder: "@verbatra/cli 0.9.3"
+    validations:
+      required: true
+
+  - type: input
+    id: agent
+    attributes:
+      label: Agent
+      description: The agent that loaded the skill.
+      placeholder: Claude Code 2.x
+    validations:
+      required: true
+
+  - type: textarea
+    id: claim
+    attributes:
+      label: What the skill says
+      description: Quote the passage or table row that is wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What verbatra actually does
+      description: The real behavior, and where you saw it (command output, docs page, or source file).
+    validations:
+      required: true
+
+  - type: textarea
+    id: transcript
+    attributes:
+      label: Agent transcript or log output
+      description: Optional. Redact API keys and other secrets before posting.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I removed API keys and other secrets from anything pasted above.
+          required: true
