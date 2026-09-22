@@ -9,6 +9,7 @@
   <a href="https://github.com/verbatra/skills/actions/workflows/parity.yml"><img src="https://img.shields.io/github/actions/workflow/status/verbatra/skills/parity.yml?branch=main&label=parity&color=7b1fa2&labelColor=0B0B12" alt="Tool parity" /></a>
   <a href="https://www.npmjs.com/package/@verbatra/cli"><img src="https://img.shields.io/npm/v/%40verbatra%2Fcli?label=%40verbatra%2Fcli&color=7b1fa2&labelColor=0B0B12" alt="@verbatra/cli on npm" /></a>
   <a href="https://www.skills.sh/verbatra/skills"><img src="https://www.skills.sh/b/verbatra/skills" alt="verbatra/skills on skills.sh" /></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/verbatra/skills"><img src="https://img.shields.io/ossf-scorecard/github.com/verbatra/skills?label=openssf%20scorecard&labelColor=0B0B12" alt="OpenSSF Scorecard" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?color=7b1fa2&labelColor=0B0B12" alt="License: MIT" /></a>
 </p>
 
