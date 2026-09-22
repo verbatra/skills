@@ -46,9 +46,11 @@ protect a consumer who installs a skill.
   requires it: pinning is enforced by GitHub, not only by code review.
 - **The lockfile is committed and CI installs are frozen** with `npm ci`.
 - **Workflows default to a read-only token.** Every workflow declares
-  `contents: read` at the top. The one write scope anywhere is
-  `security-events: write`, confined to the job that uploads the OpenSSF
-  Scorecard results to code scanning.
+  `contents: read` at the top. The only other scopes are in the OpenSSF
+  Scorecard workflow: `id-token: write` on the analysis job, which the
+  Scorecard API uses to verify that published results came from this
+  repository, and `security-events: write` on the job that uploads the results
+  to code scanning. Neither can write to the repository's contents.
 - **Dependabot runs weekly** over both the npm manifest and every Actions
   manifest, and CodeQL and OpenSSF Scorecard scan the repository.
 - **Secret scanning and push protection are enabled** on this repository.
