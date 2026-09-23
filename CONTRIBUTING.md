@@ -73,9 +73,9 @@ the reason the pack is worth shipping at all.
 
 Because the source of truth is in another repository, the failure is now post-hoc: a change in
 `verbatra/verbatra` that renames a tool merges green there and turns this repository red
-afterwards. That is what the nightly schedule and the `repository_dispatch` trigger are for. When
-you add a command, a format, a provider, a tool or an RPC method over there, update the matching
-table here in the same working session.
+afterwards. That is what the nightly schedule and the `workflow_dispatch` the source
+repository's release workflow sends are for. When you add a command, a format, a provider, a tool
+or an RPC method over there, update the matching table here in the same working session.
 
 ## Running the checks
 

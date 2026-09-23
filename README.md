@@ -130,8 +130,9 @@ same suite asserts the plugin: the pinned `@verbatra/mcp` version against the la
 release, the server flags and the spend variable against the server's own entry point,
 and the hook's `check` options against the CLI. It runs on every push to `main` and every pull
 request targeting `main`, on a nightly schedule so that a change made only in the source
-repository is still caught, on a `workflow_dispatch` that takes the source ref to assert against,
-and on a `repository_dispatch` so a release can trigger it directly.
+repository is still caught, and on a `workflow_dispatch` that takes the source ref to assert
+against, which the source repository's release workflow also calls so a release is checked at
+once.
 
 A second workflow, [validate](./.github/workflows/validate.yml), runs offline on every push to
 `main` and every pull request targeting `main`: it checks the frontmatter, the naming rules, the
