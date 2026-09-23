@@ -95,8 +95,8 @@ the glossary comes from, so read that before you try to write a term.
 | `verbatra_project_snapshot` | `project.snapshot` | always | Read the resolved config and this session's capabilities. Call it first. |
 | `verbatra_status_check` | `status.check` | always | Per locale, how many keys are missing, stale or up to date. |
 | `verbatra_status_diff` | `status.diff` | always | Per locale, the exact keys the next run would add, re-translate or orphan. |
-| `verbatra_glossary_get` | `glossary.get` | always | Read every configured term and its translation. |
-| `verbatra_glossary_write` | `glossary.write` | always | Add, replace, or remove one term. Calls no provider. |
+| `verbatra_glossary_get` | `glossary.get` | always | Read every term with its shared and per-locale translations, forbidden renderings, note and part of speech, what each target locale is held to (`byLocale`), and the terms kept untranslated. Takes no parameters. |
+| `verbatra_glossary_write` | `glossary.write` | always | Change one term: `translation`, per-`locale` translation and `forbidden`, `note`, `partOfSpeech`, `caseSensitive`, or `doNotTranslate`. `null` clears a field. Calls no provider. |
 | `verbatra_lock_state` | `lock.state` | always | Read the lock baseline and the per-locale counts it implies. |
 | `verbatra_history_list` | `history.list` | always | Recent git commits touching the source or a target locale file. Reports itself unavailable outside a git repository. |
 | `verbatra_key_integrity` | `key.integrity` | always | Whether one key's value keeps the source placeholders and stays valid ICU, per locale. |
@@ -165,9 +165,20 @@ over the stdio MCP server. Do not reference them when working against that serve
   empty string is a real stored value and no run will replace it.
 - `verbatra_history_list` never follows renames, and the server caps how many
   commits it returns regardless of the `limit` you ask for.
-- `verbatra_glossary_get` redacts values shaped like a provider API key, returning
-  `[REDACTED]` in place of the text and naming the affected terms in
-  `redactedTerms`. Never pass a redacted value back through
+- `verbatra_glossary_write` changes only the parameters you pass. `translation`
+  without `locale` is the translation for all locales; with `locale`, `translation`
+  and `forbidden` apply to that locale only, and `forbidden` replaces the whole
+  list. `null` clears `translation`, `forbidden`, `note` or `partOfSpeech`; clearing
+  the shared translation keeps the term's per-locale data, and the term disappears
+  only once nothing is left. `doNotTranslate` combines with no parameter but
+  `caseSensitive`. It never retranslates existing keys.
+- Each term of `verbatra_glossary_get` carries `byLocale`: the translation and
+  forbidden renderings each target locale is held to, and whether that translation
+  is `inherited` from the base language or the shared one. Check a translation
+  against that, not against `targets` alone.
+- `verbatra_glossary_get` redacts values shaped like a provider API key: every
+  translation, forbidden rendering, note and part of speech can come back as
+  `[REDACTED]`, and `redactedTerms` names the affected terms. Never pass a redacted value back through
   `verbatra_glossary_write`: it is a placeholder, not the original text, so the
   read-modify-write loop an agent naturally reaches for destroys the real term.
   Check `redactedTerms` first and leave those terms to a human.
