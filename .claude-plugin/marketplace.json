@@ -1,0 +1,16 @@
+{
+  "name": "verbatra",
+  "owner": {
+    "name": "verbatra",
+    "url": "https://github.com/verbatra"
+  },
+  "description": "verbatra, the i18n translation automation tool, for Claude Code.",
+  "plugins": [
+    {
+      "name": "verbatra",
+      "source": "./",
+      "description": "The verbatra skills, the verbatra MCP server with spending off by default, and a hook that reports broken placeholders in edited locale files.",
+      "category": "development"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "verbatra",
+  "displayName": "verbatra",
+  "description": "Drive verbatra from Claude Code: the CLI, MCP and Studio skills, the verbatra MCP server over the current project with provider spending off by default, and a hook that reports broken placeholders, markup and ICU after a locale file is edited.",
+  "author": {
+    "name": "Mario Kreitz",
+    "url": "https://github.com/verbatra"
+  },
+  "homepage": "https://verbatra.kreitz-webdev.de",
+  "repository": "https://github.com/verbatra/skills",
+  "license": "MIT",
+  "keywords": ["i18n", "l10n", "translation", "localization", "mcp", "verbatra"],
+  "userConfig": {
+    "allowSpend": {
+      "type": "boolean",
+      "title": "Allow provider spending",
+      "description": "Advertise the MCP tools that call the configured translation provider and bill it. Off by default. API keys are never set here: verbatra reads them from environment variables only.",
+      "default": false
+    }
+  }
+}
