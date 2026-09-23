@@ -14,7 +14,7 @@
   },
   "scripts": {
     "validate": "node scripts/validate-skills.mjs",
-    "test": "vitest run scripts/validate-skills.test.mjs",
+    "test": "vitest run scripts/validate-skills.test.mjs scripts/check-locale-edit.test.mjs",
     "test:parity": "vitest run scripts/verify-tool-parity.test.mjs",
     "check:discovery": "node scripts/check-discovery.mjs"
   },

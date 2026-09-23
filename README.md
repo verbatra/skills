@@ -56,6 +56,48 @@ Pin to a full commit SHA when the commit you want was never tagged:
 npx skills@latest add verbatra/skills#ae31c921872cad8f70989ef75ad43064b6ffb1bd --skill verbatra-cli -a claude-code -y
 ```
 
+## Claude Code plugin
+
+In Claude Code, one install brings the three skills, the verbatra MCP server and a
+hook that checks edited locale files:
+
+```text
+/plugin marketplace add verbatra/skills
+/plugin install verbatra@verbatra
+```
+
+From a shell, the same is `claude plugin marketplace add verbatra/skills` followed
+by `claude plugin install verbatra@verbatra`.
+
+What the plugin adds:
+
+- **The skills**: `verbatra-cli`, `verbatra-mcp-tools` and
+  `verbatra-studio-agent-tools`, exactly as listed below.
+- **The MCP server** `verbatra`: `npx -y @verbatra/mcp@<version> --cwd <project>`,
+  run over the project Claude Code has open. The version is pinned in
+  [`.mcp.json`](./.mcp.json), and the parity workflow fails when it falls behind
+  the last `@verbatra/mcp` release. The server needs a verbatra config in the
+  project, so run `npx verbatra init` there first. It reads a provider API key from
+  the environment Claude Code runs in; the plugin has no key option and never
+  should.
+- **Spending off by default.** The tools that call a translation provider and bill
+  it are not listed until you set the plugin's `allowSpend` option, which the
+  plugin passes to the server as `VERBATRA_MCP_ALLOW_SPEND`:
+  `claude plugin install verbatra@verbatra --config allowSpend=true`. Turn it on
+  only if you want an agent to be able to spend. A project whose provider is
+  `none` never lists those tools, whatever the option says.
+- **A locale-edit hook.** After Claude edits or writes a file that can be a locale
+  file, the hook runs the project's own `verbatra check --qa --severity error --json`
+  and, when a committed translation breaks a placeholder, inline markup or ICU,
+  hands the findings back to Claude so it fixes them before moving on. It uses only
+  the `@verbatra/cli` installed in the project's `node_modules` (0.12.0 or later),
+  never downloads anything, calls no provider, reads no key, and stays silent for
+  every other file and in a project without a local verbatra.
+
+The plugin carries no `version` field, so every commit on `main` is an update.
+The skills-only install in the previous section keeps working and needs neither
+the MCP server nor the hook.
+
 ## Skills
 
 - **[verbatra-cli](./skills/verbatra-cli/SKILL.md)**: Drive the verbatra i18n CLI from a shell or CI. Covers every command the binary registers, which of them cost money, the exit codes, the JSON envelope, the supported formats and providers, and what `verbatra.lock.json` means.
@@ -82,8 +124,11 @@ tables, and the counts spelled out in the prose, against the real registries in
 [verbatra/verbatra](https://github.com/verbatra/verbatra). It checks out the source repository
 next to this one and reads `packages/cli/src/run.ts`, `packages/core/src/model/supported-format.ts`,
 `packages/sdk/src/config/provider-config.ts`, `packages/ai-providers/src/key-env-vars.ts`,
-`packages/mcp/src/tools/`, `packages/studio/src/shared/rpc/` and
-`packages/studio/src/webmcp/register-tools.ts`. It runs on every push to `main` and every pull
+`packages/mcp/src/tools/`, `packages/mcp/src/bin.ts`, `packages/mcp/package.json`,
+`packages/studio/src/shared/rpc/` and `packages/studio/src/webmcp/register-tools.ts`. The
+same suite asserts the plugin: the pinned `@verbatra/mcp` version against the last
+release, the server flags and the spend variable against the server's own entry point,
+and the hook's `check` options against the CLI. It runs on every push to `main` and every pull
 request targeting `main`, on a nightly schedule so that a change made only in the source
 repository is still caught, on a `workflow_dispatch` that takes the source ref to assert against,
 and on a `repository_dispatch` so a release can trigger it directly.

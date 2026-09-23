@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { CHECK_ARGS } from "../hooks/check-locale-edit.mjs";
 
 const SKILLS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -615,5 +616,116 @@ describe("prose counts are derived, not remembered", () => {
     expect(readSkillFile(STUDIO_SKILL)).toContain(
       `The other ${spelled(studio.length - gated.length)} register either way.`,
     );
+  });
+});
+
+function readSkillJson(relativePath) {
+  return JSON.parse(readSkillFile(relativePath));
+}
+
+const MCP_PACKAGE = "@verbatra/mcp";
+
+function pluginMcpServer() {
+  const server = readSkillJson(".mcp.json").mcpServers?.verbatra;
+  if (server === undefined) {
+    throw new Error(".mcp.json declares no verbatra server");
+  }
+  return server;
+}
+
+function pinnedMcpVersion(args) {
+  const spec = args.find((arg) => arg.startsWith(`${MCP_PACKAGE}@`));
+  return spec === undefined ? undefined : spec.slice(MCP_PACKAGE.length + 1);
+}
+
+function mcpBinSource() {
+  return readSourceFile("packages/mcp/src/bin.ts");
+}
+
+function checkCommandBlock() {
+  return sourceBlock(
+    readSourceFile("packages/cli/src/run.ts"),
+    ".command(\"check\")",
+    ".action(",
+    "check command",
+  );
+}
+
+describe("the claude code plugin runs the released stdio server", () => {
+  it("pins the mcp package to the version the source repository last released", () => {
+    const released = JSON.parse(readSourceFile("packages/mcp/package.json")).version;
+    expect(pinnedMcpVersion(pluginMcpServer().args)).toBe(released);
+  });
+
+  it("launches the package through npx without a prompt", () => {
+    const server = pluginMcpServer();
+    expect(server.command).toBe("npx");
+    expect(server.args[0]).toBe("-y");
+  });
+
+  it("passes only flags the server's bin parses", () => {
+    const bin = mcpBinSource();
+    const args = pluginMcpServer().args;
+    const flags = args.slice(args.findIndex((arg) => arg.startsWith(`${MCP_PACKAGE}@`)) + 1);
+    for (const flag of flags.filter((arg) => arg.startsWith("--"))) {
+      expect(bin).toContain(`arg === "${flag}"`);
+    }
+  });
+
+  it("serves the project Claude Code has open", () => {
+    const args = pluginMcpServer().args;
+    expect(args[args.indexOf("--cwd") + 1]).toBe("${CLAUDE_PROJECT_DIR}");
+  });
+
+  it("maps the allowSpend option to the variable the server reads, off by default", () => {
+    const declared = /const ALLOW_SPEND_ENV_VAR = "([A-Z_]+)";/.exec(mcpBinSource());
+    expect(declared).not.toBeNull();
+    expect(pluginMcpServer().env).toEqual({ [declared[1]]: "${user_config.allowSpend}" });
+    const option = readSkillJson(".claude-plugin/plugin.json").userConfig.allowSpend;
+    expect(option.type).toBe("boolean");
+    expect(option.default).toBe(false);
+  });
+
+  it("never passes the spend flag on the command line", () => {
+    expect(pluginMcpServer().args).not.toContain("--allow-spend");
+  });
+});
+
+describe("the claude code plugin is one installable unit", () => {
+  const marketplace = readSkillJson(".claude-plugin/marketplace.json");
+  const plugin = readSkillJson(".claude-plugin/plugin.json");
+
+  it("lists the plugin at the repository root under its own name", () => {
+    expect(marketplace.plugins).toEqual([expect.objectContaining({ name: plugin.name, source: "./" })]);
+  });
+
+  it("leaves the default skills directory in charge, so every skill ships", () => {
+    expect(plugin.skills).toBeUndefined();
+    expect(marketplace.plugins[0].skills).toBeUndefined();
+  });
+
+  it("points its hook at a script that exists", () => {
+    const hooks = readSkillJson("hooks/hooks.json").hooks.PostToolUse.flatMap(
+      (entry) => entry.hooks,
+    );
+    for (const hook of hooks) {
+      for (const arg of hook.args) {
+        const path = arg.replace("${CLAUDE_PLUGIN_ROOT}/", "");
+        expect(existsSync(resolve(SKILLS_ROOT, path))).toBe(true);
+      }
+    }
+  });
+});
+
+describe("the plugin hook runs a check the cli actually offers", () => {
+  it("names a registered command", () => {
+    expect(cliCommands()).toContain(CHECK_ARGS[0]);
+  });
+
+  it("passes only options the check command registers", () => {
+    const block = checkCommandBlock();
+    for (const flag of [...CHECK_ARGS.filter((arg) => arg.startsWith("--")), "--cwd"]) {
+      expect(block).toMatch(new RegExp(`\\.option\\(\\s*"${flag}[ "]`));
+    }
   });
 });

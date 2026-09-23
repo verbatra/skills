@@ -62,6 +62,8 @@ compares them to the tables and the spelled-out counts in the three skill docume
 | `## Providers` second column in `verbatra-cli` | `PROVIDER_ENV` and `OPENAI_COMPATIBLE_ENV_VAR` in `packages/ai-providers/src/key-env-vars.ts`; `none` names no variable |
 | `## Tools` table in `verbatra-mcp-tools` | `ALL_TOOLS_IN_ORDER` and `SPEND_TOOL_NAMES` in `packages/mcp/src/tools/registry.ts`, cross-checked against every `name:` declared under `packages/mcp/src/tools/` |
 | `## Tools` table in `verbatra-studio-agent-tools` | `rpcParamsSchemas` in `packages/studio/src/shared/rpc/contract.ts` less `HUMAN_ONLY_METHOD_NAMES`, the `*_METHOD` constants beside it, and the `TOOL_DESCRIPTORS` (with their `spendGated` flag) in `packages/studio/src/webmcp/register-tools.ts` |
+| `.mcp.json` in the Claude Code plugin | the `version` in `packages/mcp/package.json`, and the flags and `ALLOW_SPEND_ENV_VAR` in `packages/mcp/src/bin.ts` |
+| `CHECK_ARGS` in `hooks/check-locale-edit.mjs` | the `check` command's `.option(...)` registrations in `packages/cli/src/run.ts` |
 | Counts spelled out in prose ("one of these fourteen", "registers ... but advertises only ...") | derived from the same registries, never remembered |
 | Frontmatter `description` in all three skills | the same registries, asserted negatively: a description must name at most two real identifiers, so it cannot grow back into a stale second index |
 
@@ -119,6 +121,31 @@ To try an edited skill in a real project before it is merged, point the installe
 ```bash
 npx skills@latest add /path/to/your/skills --skill verbatra-cli -a claude-code -y
 ```
+
+## The Claude Code plugin
+
+The repository root is also a Claude Code plugin marketplace
+(`.claude-plugin/marketplace.json`) holding one plugin, `verbatra`, whose root is the
+repository itself (`.claude-plugin/plugin.json`). It picks the skills up from the default
+`skills/` directory, so a new skill ships in the plugin without a manifest change. The MCP
+server is declared in `.mcp.json` and the hook in `hooks/hooks.json`, which runs
+`hooks/check-locale-edit.mjs`.
+
+- When the parity suite reports that the pinned `@verbatra/mcp` version is behind the last
+  release, bump the pin in `.mcp.json` in the same change that syncs the skills.
+- `npm test` covers the hook script with fixtures; it never needs a real verbatra.
+- Validate the manifests with Claude Code itself:
+
+  ```bash
+  claude plugin validate .
+  ```
+
+  It reports one warning, that `plugin.json` has no `version`. That is deliberate: without
+  one, every commit on `main` reaches installed plugins as an update, which matches how this
+  repository releases.
+- Try a change before it merges by adding your checkout as a marketplace:
+  `claude plugin marketplace add /path/to/your/skills`, then
+  `claude plugin install verbatra@verbatra`.
 
 ## Releases
 
