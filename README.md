@@ -81,7 +81,7 @@ RPC methods), and the [parity workflow](./.github/workflows/parity.yml) asserts 
 tables, and the counts spelled out in the prose, against the real registries in
 [verbatra/verbatra](https://github.com/verbatra/verbatra). It checks out the source repository
 next to this one and reads `packages/cli/src/run.ts`, `packages/core/src/model/supported-format.ts`,
-`packages/sdk/src/config/provider-config.ts`, `packages/ai-providers/src/env.ts`,
+`packages/sdk/src/config/provider-config.ts`, `packages/ai-providers/src/key-env-vars.ts`,
 `packages/mcp/src/tools/`, `packages/studio/src/shared/rpc/` and
 `packages/studio/src/webmcp/register-tools.ts`. It runs on every push to `main` and every pull
 request targeting `main`, on a nightly schedule so that a change made only in the source

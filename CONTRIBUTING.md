@@ -58,10 +58,10 @@ compares them to the tables and the spelled-out counts in the three skill docume
 | --- | --- |
 | `## Commands` table in `verbatra-cli` | `.command("...")` registrations in `packages/cli/src/run.ts` |
 | `## Formats` table in `verbatra-cli` | `SUPPORTED_FORMATS` in `packages/core/src/model/supported-format.ts` |
-| `## Providers` first column in `verbatra-cli` | `providerFactories` in `packages/sdk/src/config/provider-config.ts` |
-| `## Providers` second column in `verbatra-cli` | `PROVIDER_ENV` and `OPENAI_COMPATIBLE_ENV_VAR` in `packages/ai-providers/src/env.ts` |
+| `## Providers` first column in `verbatra-cli` | the `id` literals of `providerConfigSchema` in `packages/sdk/src/config/provider-config.ts`, every one but `none` backed by `providerFactories` |
+| `## Providers` second column in `verbatra-cli` | `PROVIDER_ENV` and `OPENAI_COMPATIBLE_ENV_VAR` in `packages/ai-providers/src/key-env-vars.ts`; `none` names no variable |
 | `## Tools` table in `verbatra-mcp-tools` | `ALL_TOOLS_IN_ORDER` and `SPEND_TOOL_NAMES` in `packages/mcp/src/tools/registry.ts`, cross-checked against every `name:` declared under `packages/mcp/src/tools/` |
-| `## Tools` table in `verbatra-studio-agent-tools` | `rpcParamsSchemas` in `packages/studio/src/shared/rpc/contract.ts`, the `*_METHOD` constants beside it, and the `spendGated` descriptors in `packages/studio/src/webmcp/register-tools.ts` |
+| `## Tools` table in `verbatra-studio-agent-tools` | `rpcParamsSchemas` in `packages/studio/src/shared/rpc/contract.ts` less `HUMAN_ONLY_METHOD_NAMES`, the `*_METHOD` constants beside it, and the `TOOL_DESCRIPTORS` (with their `spendGated` flag) in `packages/studio/src/webmcp/register-tools.ts` |
 | Counts spelled out in prose ("one of these fourteen", "registers ... but advertises only ...") | derived from the same registries, never remembered |
 | Frontmatter `description` in all three skills | the same registries, asserted negatively: a description must name at most two real identifiers, so it cannot grow back into a stale second index |
 

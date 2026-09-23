@@ -138,7 +138,7 @@ function supportedFormats() {
   return [...block.matchAll(/"([^"]+)"/g)].map((match) => match[1]).sort();
 }
 
-function providerIds() {
+function providerFactoryIds() {
   const block = sourceBlock(
     readSourceFile("packages/sdk/src/config/provider-config.ts"),
     "const providerFactories: ProviderFactories = {",
@@ -148,15 +148,43 @@ function providerIds() {
   return [...block.matchAll(/^\s*"?([a-z0-9-]+)"?:/gm)].map((match) => match[1]).sort();
 }
 
+function providerIds() {
+  const block = sourceBlock(
+    readSourceFile("packages/sdk/src/config/provider-config.ts"),
+    'export const providerConfigSchema = z.discriminatedUnion("id", [',
+    "\n]);",
+    "providerConfigSchema",
+  );
+  return [...block.matchAll(/id: z\.literal\("([a-z0-9-]+)"\)/g)].map((match) => match[1]).sort();
+}
+
+const PROVIDER_ENV_FILES = [
+  "packages/ai-providers/src/key-env-vars.ts",
+  "packages/ai-providers/src/env.ts",
+];
+
+function providerEnvSource() {
+  for (const relativePath of PROVIDER_ENV_FILES) {
+    if (!existsSync(resolve(SOURCE_ROOT, relativePath))) {
+      continue;
+    }
+    const source = readSourceFile(relativePath);
+    if (source.includes("export const PROVIDER_ENV = {")) {
+      return source;
+    }
+  }
+  throw new Error(`PROVIDER_ENV is declared in none of ${PROVIDER_ENV_FILES.join(", ")}`);
+}
+
 function providerEnvVars() {
-  const source = readSourceFile("packages/ai-providers/src/env.ts");
+  const source = providerEnvSource();
   const table = sourceBlock(source, "export const PROVIDER_ENV = {", "} as const;", "PROVIDER_ENV");
   const byId = new Map(
     [...table.matchAll(/"?([a-z0-9-]+)"?:\s*"([A-Z_0-9]+)"/g)].map((match) => [match[1], match[2]]),
   );
   const compatible = /OPENAI_COMPATIBLE_ENV_VAR = "([A-Z_]+)"/.exec(source);
   if (compatible === null) {
-    throw new Error("OPENAI_COMPATIBLE_ENV_VAR could not be located in env.ts");
+    throw new Error("OPENAI_COMPATIBLE_ENV_VAR could not be located beside PROVIDER_ENV");
   }
   byId.set("openai-compatible", compatible[1]);
   return byId;
@@ -263,7 +291,7 @@ function resolveConstants(constants, byConstant, label) {
   });
 }
 
-function studioRpcMethods() {
+function studioContractMethods() {
   const block = sourceBlock(
     readSourceFile("packages/studio/src/shared/rpc/contract.ts"),
     "export const rpcParamsSchemas = {",
@@ -272,6 +300,38 @@ function studioRpcMethods() {
   );
   const constants = [...block.matchAll(/\[([A-Z_]+_METHOD)\]:/g)].map((match) => match[1]);
   return resolveConstants(constants, rpcMethodByConstant(), "rpcParamsSchemas").sort();
+}
+
+function studioHumanOnlyMethods() {
+  const directory = resolve(SOURCE_ROOT, "packages/studio/src/shared/rpc");
+  for (const entry of readdirSync(directory)) {
+    if (!entry.endsWith(".ts") || entry.endsWith(".test.ts")) {
+      continue;
+    }
+    const source = readFileSync(resolve(directory, entry), "utf8");
+    const declared = /export const HUMAN_ONLY_METHOD_NAMES = \[([^\]]*)\]/.exec(source);
+    if (declared !== null) {
+      const constants = [...declared[1].matchAll(/([A-Z_]+_METHOD)/g)].map((match) => match[1]);
+      return resolveConstants(constants, rpcMethodByConstant(), "HUMAN_ONLY_METHOD_NAMES").sort();
+    }
+  }
+  return [];
+}
+
+function studioRpcMethods() {
+  const humanOnly = new Set(studioHumanOnlyMethods());
+  return studioContractMethods().filter((method) => !humanOnly.has(method));
+}
+
+function studioDescribedMethods() {
+  const block = sourceBlock(
+    readSourceFile("packages/studio/src/webmcp/register-tools.ts"),
+    "const TOOL_DESCRIPTORS",
+    "\n};",
+    "TOOL_DESCRIPTORS",
+  );
+  const constants = [...block.matchAll(/\[([A-Z_]+_METHOD)\]: \{/g)].map((match) => match[1]);
+  return resolveConstants(constants, rpcMethodByConstant(), "TOOL_DESCRIPTORS").sort();
 }
 
 function studioSpendGatedMethods() {
@@ -398,20 +458,34 @@ describe("the cli skill enumerates the real cli surface", () => {
     );
   });
 
-  it("lists exactly the providers the sdk factory table resolves", () => {
+  it("lists exactly the provider ids the sdk config schema accepts", () => {
     expect(firstColumn(tableRowsUnder(readSkillFile(CLI_SKILL), "## Providers", CLI_SKILL))).toEqual(
       providerIds(),
     );
   });
 
+  it("backs every accepted provider id but the human-only one with a factory", () => {
+    expect(providerIds().filter((id) => id !== "none")).toEqual(providerFactoryIds());
+  });
+
   it("names the environment variable each provider actually reads", () => {
+    const factories = new Set(providerFactoryIds());
     const documented = new Map(
       tableRowsUnder(readSkillFile(CLI_SKILL), "## Providers", CLI_SKILL).map((cells) => [
         backticked(cells[0]),
         backticked(cells[1]),
       ]),
     );
-    expect(Object.fromEntries(documented)).toEqual(Object.fromEntries(providerEnvVars()));
+    const withFactory = [...documented].filter(([id]) => factories.has(id));
+    expect(Object.fromEntries(withFactory)).toEqual(Object.fromEntries(providerEnvVars()));
+  });
+
+  it("names no key variable for a provider id that constructs no provider", () => {
+    const factories = new Set(providerFactoryIds());
+    const rows = tableRowsUnder(readSkillFile(CLI_SKILL), "## Providers", CLI_SKILL);
+    for (const cells of rows.filter((row) => !factories.has(backticked(row[0])))) {
+      expect(backticked(cells[1])).toBeUndefined();
+    }
   });
 });
 
@@ -434,8 +508,19 @@ describe("the mcp skill enumerates the real stdio tool registry", () => {
 describe("the studio skill enumerates the real webmcp tool surface", () => {
   const rows = tableRowsUnder(readSkillFile(STUDIO_SKILL), "## Tools", STUDIO_SKILL);
 
-  it("lists exactly the rpc methods the contract declares", () => {
+  it("lists exactly the rpc methods the contract declares for agents", () => {
     expect(rows.map((cells) => backticked(cells[1])).sort()).toEqual(studioRpcMethods());
+  });
+
+  it("describes a tool for exactly the methods that are not reserved for a person", () => {
+    expect(studioDescribedMethods()).toEqual(studioRpcMethods());
+  });
+
+  it("keeps the methods reserved for a person out of the tool table", () => {
+    const listed = new Set(rows.map((cells) => backticked(cells[1])));
+    for (const method of studioHumanOnlyMethods()) {
+      expect(listed.has(method)).toBe(false);
+    }
   });
 
   it("derives every tool name the way register-tools derives it", () => {
