@@ -62,13 +62,22 @@ bills per key sent, so the cheap read-only question comes first.
 - `verbatra check --json` answers the same thing in counts when a yes or no is
   enough. Add `--consistency` to also list source strings a locale translates
   more than one way under different keys; that report never changes the exit
-  code.
+  code. Add `--qa` to also run the write-time integrity gate and the review checks
+  over every committed translation: the totals land in `result.qa` (`errors`,
+  `warnings`, `invalidSourceKeys`) and each locale's findings in
+  `result.locales[].qa`. An integrity error exits `1`; a review warning exits `1`
+  only under `--strict`, and `--severity error` drops the warnings from the report.
 - `verbatra translate --dry-run --json` produces the full run summary a real run
   would produce. A dry run constructs no provider object at all, so it reads no
   key, opens no connection, and writes nothing. It is safe on a machine that has
   never had a key.
 - `verbatra translate --estimate` sizes and prices the run, then exits. It implies
-  `--dry-run`, so it also constructs no provider.
+  `--dry-run`, so it also constructs no provider. Show its figure before asking
+  for a yes. When the human agrees to a ceiling rather than an open-ended run,
+  `verbatra translate --max-tokens <n>` holds that run under `n` tokens: the lower
+  of the flag and the config's `maxTokens` applies, a request that would cross it
+  is withheld rather than sent, and its keys are listed under `budgetWithheld`. A
+  token budget and `--concurrency` above `1` cannot be combined.
 
 Never run `verbatra translate` to find out whether there is anything to do.
 
@@ -78,7 +87,7 @@ Read this table before running anything unattended.
 
 | Command | Provider spend | Writes files | Needs a key |
 | --- | --- | --- | --- |
-| `translate` | yes, unless `--dry-run` or `--estimate` | yes | yes, for a real run |
+| `translate` | yes, unless `--dry-run`, `--estimate` or provider `none` | yes | yes, for a real run with a provider |
 | `watch` | yes, once per source change | yes | yes |
 | `export` | no | yes, the translator handoff workbook | no |
 | `import` | no | yes, target locales and the lock file | no |
@@ -90,7 +99,7 @@ Read this table before running anything unattended.
 | `doctor` | no | no | no, it never reads a key value; `--literals` does not even check for one |
 | `studio` | only with `--allow-spend` or `VERBATRA_STUDIO_ALLOW_SPEND` | yes, through in-place edits | only when spend is granted |
 | `mcp` | only with `--allow-spend` or `VERBATRA_MCP_ALLOW_SPEND` | yes, through in-place edits | only when spend is granted |
-| `init` | no | yes, the config and env example | no |
+| `init` | no | yes, the config, the env example unless the provider is `none`, and `.gitignore` | no |
 | `extract` | no | yes, the source locale, unless `--dry-run` | no |
 
 `import` is worth calling out: it applies human translations from a workbook and
@@ -146,7 +155,31 @@ The second trap: an empty string is an existing value. A target key set to `""` 
 a placeholder counts as present and unchanged, so a normal run never fills it in.
 
 Nothing else is overwritten. A target value verbatra did not flag as stale is left
-exactly as it is, including a value a human edited by hand.
+exactly as it is.
+
+## Protected keys
+
+`verbatra.provenance.json` sits next to the lock file and records, per key, who
+wrote the value that is in the locale file now: `machine`, `memory`, `fuzzy`,
+`agent`, `human` or `import`, and, derived when the files are read, `unrecorded`
+(no record yet) or `external` (changed outside verbatra since). Commit it with the
+lock file.
+
+A stale key whose value a person wrote, imported or changed outside verbatra is
+**protected**. The config's `humanEdits` decides what a run does with it:
+
+- `protect`, the default: the value is kept, the key stays stale, and the run lists
+  it under `result.locales[].protected` for a person.
+- `suggest`: as `protect`, but the provider is also asked for a suggestion, which is
+  reported and never written. That still bills the provider.
+- `overwrite`: no protection; the key is retranslated like any other.
+
+A key matching a `pinnedKeys` pattern is never machine-translated, whatever
+`humanEdits` says. `translate --include-human` overrides `protect` for one run and
+replaces those human values with provider output; never pass it unless the human
+asked for exactly that. In a project with a provider, protected keys do not change
+the exit code of `translate` (it says on stderr how many it left), but `check`
+still exits `1`, because they stay stale until a person resolves them.
 
 ## Exit codes
 
@@ -156,8 +189,9 @@ run" with "did the work land".
 | Code | Meaning |
 | --- | --- |
 | `0` | Success: nothing outstanding, or everything requested completed. |
-| `1` | It ran, the result is not clean: a locale failed or is partial, `check` found drift, `diff` found pending keys or, with `--unused`, a complete scan found unused source keys, `doctor` found a failed check or, with `--literals`, an untranslated literal or an unreadable source file, `types --check` found the committed declaration out of date. |
-| `2` | It could not run: bad config, unreadable source, corrupt lock file, or a usage error such as an unknown `--locales` value. |
+| `1` | It ran, the result is not clean: a locale failed or is partial, `check` found drift or, with `--qa`, an integrity error (a review warning too under `--strict`), `diff` found pending keys or, with `--unused`, a complete scan found unused source keys, `doctor` found a failed check or, with `--literals`, an untranslated literal or an unreadable source file, `types --check` found the committed declaration out of date. |
+| `2` | It could not run: bad config, unreadable source, corrupt lock file, a network policy that refuses the provider's host, or a usage error such as an unknown `--locales` value. `init` also exits `2` when a flag it needs is missing, when several formats or file patterns fit, or when it refuses to replace an existing config. |
+| `3` | `translate` in a human-only project (provider `none`) finished cleanly but left keys that need a human translation. |
 | `130` | `watch`, `studio` or `mcp` was force-stopped by a second interrupt. All three return the same stoppable session. |
 
 Two things that catch scripts out:
@@ -169,6 +203,9 @@ Two things that catch scripts out:
 - A **partial** locale is a failure. The file was written with some keys still
   missing, usually because a sub-batch failed or the integrity gate refused a
   translation. It exits `1` exactly like a failed locale.
+- Exit `3` is not a failure and not success either: nothing broke, and the keys in
+  `result.locales[].unfilled` (plus any protected keys) are waiting for a person.
+  Hand them off with `export`; retrying `translate` changes nothing.
 
 Do not run a verbatra gate under `set -e`: a non-zero exit is the answer you asked
 for, not a crash.
@@ -181,12 +218,22 @@ field and never guess which command's payload you are holding:
 ```ts
 type Envelope<TResult> =
   | { ok: true; version: 1; command: string; result: TResult }
-  | { ok: false; version: 1; command: string | null; code: string; message: string };
+  | {
+      ok: false;
+      version: 1;
+      command: string | null;
+      code: string;
+      message: string;
+      candidates?: string[];
+      missing?: string[];
+    };
 ```
 
 `version` is the envelope's shape version, not the package version. New fields can
 appear without a bump, so ignore fields you do not recognize. On an `ok: false`
-record, branch on `code`, never on `message`. Progress records and the
+record, branch on `code`, never on `message`. `candidates` lists the values that
+would have been accepted and `missing` the flags that still have to be passed, so
+an agent can retry with a flag instead of parsing prose. Progress records and the
 human-readable error line always go to stderr, so stdout is a clean stream of
 envelopes.
 
@@ -223,11 +270,32 @@ adapter.
 Plain JSON with no matching library: pick by placeholder syntax. `{{name}}` means
 `i18next-json`, single-brace `{name}` means `vue-i18n-json`.
 
-Do not trust `verbatra init`'s own format guess. It only inspects `package.json`
-for one of four JSON libraries and never reads the locale directory, so it is
-wrong outright for every other format in the table above. Set `format` by hand
-after `init`, then
-run `doctor`.
+## Setting a project up
+
+`verbatra init` detects the format and the file layout from the locale files it
+finds and falls back to the `package.json` dependencies only when no locale file
+decides it. Unattended, run it with `--json` (which never prompts) and every
+choice you already know as a flag: `--provider`, `--format`, `--source`,
+`--targets`, `--path`, and for `openai-compatible` also `--base-url`, `--model` and
+optionally `--api-key-env-var`, which names a variable and never holds a key. Add
+`--yes` to accept a default for anything neither passed nor detected. The success
+record names the files it wrote, the resolved config, where each value came from
+(`sources`), what was detected with its `confidence`, and `nextSteps`.
+
+Branch on the failure `code`, all of them exit `2`:
+
+| Code | What to do |
+| --- | --- |
+| `MISSING_OPTIONS` | Pass the flags listed in `missing`, or `--yes` to take the defaults. |
+| `INVALID_PROVIDER`, `INVALID_FORMAT` | Pass one of the values listed in `candidates`. |
+| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible`. |
+| `FORMAT_AMBIGUOUS`, `LAYOUT_AMBIGUOUS` | Several fit; ask the human which of `candidates` is right and pass `--format` or `--path`. |
+| `CONFIG_EXISTS` | A different config is already there. Never add `--force` unless the human asked to replace it. |
+| `CONFIG_INVALID` | The answers do not form a valid config; the message says which field. |
+
+Re-running `init` with the same answers is safe: an identical
+`verbatra.config.ts` is reported `unchanged`, and a missing key variable is
+appended to `.env.example` rather than replacing it. Run `doctor` afterwards.
 
 ## Providers
 
@@ -239,11 +307,34 @@ run `doctor`.
 | `deepl` | `DEEPL_API_KEY` |
 | `google-translate` | `GOOGLE_TRANSLATE_API_KEY` |
 | `openai-compatible` | `OPENAI_COMPATIBLE_API_KEY`, or a custom variable named in the config |
+| `none` | none; no provider is constructed and no key is read |
 
 Ask the human which provider to use unless the project already answers it. Do not
 pick one that spends against a service nobody agreed to. `openai-compatible`
 points at a local or self-hosted server and is the one that may legitimately need
 no key at all.
+
+`provider: { id: "none" }` is the human-only mode. `translate` and `watch` fill
+keys from the translation memory alone and report every other key as `unfilled`,
+`translate` then exits `3`, the provider-spending agent tools are never offered,
+and a single-key retranslation fails with `MACHINE_TRANSLATION_DISABLED`. Do not
+read it as a broken setup, and do not switch it to a paying provider on your own.
+
+The config's `network` block (`policy` of `any`, `local-only` or `allowlist`, plus
+`allowedHosts`) and the `VERBATRA_NETWORK_POLICY` environment variable limit where
+a provider may connect; when both are set, a host must satisfy each. A refused host
+fails a real run with `NETWORK_POLICY_VIOLATION` before any key is read or request
+sent. `doctor` reports the effective policy in its `network-policy` check.
+
+## doctor
+
+`verbatra doctor --json` returns `result.ok` and one entry per check in
+`result.checks`, each with an `id` and a `status` of `pass`, `fail` or `skipped`:
+`config`, `format-adapter`, `provider`, `api-key`, `network-policy`, `source-file`,
+`plural-rules` and `locale-codes`. The last two are informational and never fail;
+the others are skipped when `config` itself failed. With `--literals` the run has
+exactly two checks, `config` and `untranslated-literals`. Branch on `id`, never on
+`title` or `detail`.
 
 ## A safe unattended shape
 
@@ -252,13 +343,17 @@ no key at all.
    network call and no key read.
 2. `verbatra diff --json` to learn the exact pending keys. Exit `0` means stop
    here, there is nothing to do and nothing to spend.
-3. Report the count per locale in plain language, then stop and ask.
-4. Only after an explicit yes: `verbatra translate --json`.
-5. Report from `result.succeeded`, `result.partial` and `result.failed`. Report
-   what landed, not what you asked for.
+3. `verbatra translate --estimate --json` for what the run would send and cost.
+4. Report the count per locale and the estimate in plain language, then stop and
+   ask.
+5. Only after an explicit yes: `verbatra translate --json`, with
+   `--max-tokens <n>` when the human agreed to a ceiling.
+6. Report from `result.succeeded`, `result.partial` and `result.failed`, and name
+   what `protected`, `unfilled` and `budgetWithheld` left behind. Report what
+   landed, not what you asked for.
 
-Commit `verbatra.config.ts`, `.env.example`, `verbatra.lock.json` and the
-translated locale files. Never commit `.env`, `.env.local`, `.verbatra-local/` or
+Commit `verbatra.config.ts`, `.env.example`, `verbatra.lock.json`,
+`verbatra.provenance.json` and the translated locale files. Never commit `.env`, `.env.local`, `.verbatra-local/` or
 `verbatra.cache.json`.
 
 ## Reference
@@ -267,3 +362,7 @@ translated locale files. Never commit `.env`, `.env.local`, `.verbatra-local/` o
 - [Recipes for agents and scripts](https://verbatra.kreitz-webdev.de/docs/agent-recipes)
 - [The lock file](https://verbatra.kreitz-webdev.de/docs/the-lock-file)
 - [Providers](https://verbatra.kreitz-webdev.de/docs/providers)
+- [Protecting human translations](https://verbatra.kreitz-webdev.de/docs/protecting-human-translations)
+- [Human-only workflow](https://verbatra.kreitz-webdev.de/docs/human-only-workflow)
+- [Estimating cost](https://verbatra.kreitz-webdev.de/docs/estimating-cost)
+- [Network policy](https://verbatra.kreitz-webdev.de/docs/network-policy)

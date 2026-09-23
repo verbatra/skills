@@ -15,7 +15,7 @@ WebMCP tools in the page, so a browser agent with a Studio tab open can read and
 change the project without a shell.
 
 This is one of two agent surfaces and the sets differ. The stdio MCP server has
-thirteen tools with dotted names such as `status.check`; Studio has fifteen, with
+fourteen tools with dotted names such as `status.check`; Studio has sixteen, with
 underscored names such as `verbatra_status_check`, and adds two the stdio server
 does not have. `verbatra-mcp-tools` covers the stdio server. `verbatra-cli` covers
 the binary. Do not assume a tool exists on one surface because you saw it on the
@@ -64,15 +64,23 @@ Studio decides twice what an agent may do, and the two decisions are independent
    `verbatra_translation_retranslateEntry` and
    `verbatra_translation_translatePending`, are still skipped during registration
    unless Studio was also started with `--allow-spend` (or
-   `VERBATRA_STUDIO_ALLOW_SPEND`). The other thirteen register either way.
+   `VERBATRA_STUDIO_ALLOW_SPEND`) and the config names a translation provider.
+   The other fourteen register either way. `verbatra_project_snapshot` says which:
+   `capabilities.spend` is true only when both hold, and when it is false,
+   `capabilities.spendWithheld` is `flag` (spend was not granted) or `policy` (the
+   project is human-only, provider `none`, so no flag can grant it).
 
 Neither gate can be flipped from the browser. You may tell the human which flag
 would change what, but say plainly that granting spend means Studio will bill the
 configured provider. Never present a re-launch as a fix for a missing tool.
 
-Local editing is never gated. `verbatra_translation_editEntry` and
-`verbatra_glossary_write` are always registered when agent tools are on, because
-they call no provider.
+Local editing and pricing are never gated. `verbatra_translation_editEntry`,
+`verbatra_glossary_write` and `verbatra_translation_estimate` are always registered
+when agent tools are on, because they call no provider.
+
+Approving or rejecting a review entry is reserved for a person. The dashboard's
+`review.approve` and `review.reject` methods are never registered as tools, on
+purpose: an agent cannot sign off its own work.
 
 Registered is not the same as usable. `verbatra_glossary_write` needs a
 file-backed glossary: on a project whose glossary is inline in the config, or
@@ -96,9 +104,10 @@ the glossary comes from, so read that before you try to write a term.
 | `verbatra_usage_summary` | `usage.summary` | always | Token usage and budget figures recorded by the last run. |
 | `verbatra_key_value` | `key.value` | always | Source and target text for exactly one key in one locale. |
 | `verbatra_locale_values` | `locale.values` | always | Source and target text for every key across every locale, in one call. |
-| `verbatra_translation_editEntry` | `translation.editEntry` | always | Write a known translation for one key in one locale. No provider call. |
+| `verbatra_translation_editEntry` | `translation.editEntry` | always | Write a known translation for one key in one locale, recorded as written by an agent. No provider call. |
+| `verbatra_translation_estimate` | `translation.estimate` | always | Price what a pending run would send, per locale and in total. No provider call, no key read. |
 | `verbatra_translation_retranslateEntry` | `translation.retranslateEntry` | spend gated | Ask the provider for a fresh translation of one key in one locale. |
-| `verbatra_translation_translatePending` | `translation.translatePending` | spend gated | Translate every missing or stale key across every locale in one run. |
+| `verbatra_translation_translatePending` | `translation.translatePending` | spend gated | Translate every missing or stale key in one run, optionally only some `locales` and under a `maxTokens` ceiling. |
 
 `verbatra_history_list` and `verbatra_locale_values` are what this surface adds
 over the stdio MCP server. Do not reference them when working against that server.
@@ -117,7 +126,9 @@ over the stdio MCP server. Do not reference them when working against that serve
    spends nothing, and it never obtains a translation: exactly the text you send is
    what gets written. It goes through the placeholder and ICU integrity gate first,
    so a rejected value is returned with a reason and nothing is written.
-5. Only after an explicit yes, and only if the tool is registered, use the two
+5. Before asking, `verbatra_translation_estimate` with the same `locales` you
+   intend to translate, and show its figure next to the diff.
+6. Only after an explicit yes, and only if the tool is registered, use the two
    spend-gated tools.
 
 ## Traps specific to this surface
@@ -125,15 +136,26 @@ over the stdio MCP server. Do not reference them when working against that serve
 - An edit is immediate and has no undo on this surface. An accepted
   `verbatra_translation_editEntry` writes the locale file and its lock entry at
   once, replacing the previous value.
-- `verbatra_translation_translatePending` takes no parameters, is not idempotent,
-  and is not all or nothing. A second call bills again for whatever is still
+- `verbatra_translation_translatePending` is not idempotent and not all or
+  nothing. Its optional `locales` narrows the run and its optional `maxTokens` is a
+  hard ceiling: requests that would cross it are withheld and their keys listed
+  under `budgetWithheld`. A second call bills again for whatever is still
   pending, and a run that fails partway can leave some locales written and others
   untouched. Only one run may be in flight, so a concurrent second call is refused
   rather than queued.
 - `verbatra_review_queue` and `verbatra_usage_summary` read a snapshot only a real
   translation run refreshes. An unavailable result means no run has ever recorded
-  one, which is not the same as an empty queue or zero usage. A key you fixed with
-  `verbatra_translation_editEntry` stays in the review queue until the next run.
+  one, which is not the same as an empty queue or zero usage. A key leaves the
+  review queue once a person approves or rejects it in the dashboard, rewrites it,
+  or it loses its translation; a key you fixed with
+  `verbatra_translation_editEntry` stays listed, because an agent's edit still
+  needs a person's review.
+- Protected keys are left for a person. A stale value a person wrote, imported or
+  changed outside verbatra, and any key matching `pinnedKeys`, is skipped by
+  `verbatra_translation_translatePending` and listed under each locale's
+  `protected`; `verbatra_translation_retranslateEntry` refuses it with
+  `KEY_PROTECTED` or `KEY_PINNED`, and `verbatra_translation_editEntry` refuses a
+  pinned key with `KEY_PINNED`. Report them rather than editing around them.
 - `verbatra_key_integrity` lists a locale only while the key counts as changed
   there. Absence is not a pass and not a failure.
 - `verbatra_lock_state` compares against the recorded lock baseline;
