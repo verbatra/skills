@@ -61,13 +61,20 @@ npx skills@latest add verbatra/skills#ae31c921872cad8f70989ef75ad43064b6ffb1bd -
 In Claude Code, one install brings the three skills, the verbatra MCP server and a
 hook that checks edited locale files:
 
-```text
-/plugin marketplace add verbatra/skills
-/plugin install verbatra@verbatra
+Install it into the project that holds your verbatra config, from that project's root:
+
+```bash
+claude plugin marketplace add verbatra/skills
+claude plugin install verbatra@verbatra -s project
 ```
 
-From a shell, the same is `claude plugin marketplace add verbatra/skills` followed
-by `claude plugin install verbatra@verbatra`.
+Project scope is the recommended one because the MCP server only works in a project
+that has a verbatra config: `-s project` records the plugin in the project's
+`.claude/settings.json`, so it is enabled where it works and for everyone who opens
+the project, instead of starting a server that fails in every other project. Inside
+a Claude Code session, `/plugin marketplace add verbatra/skills` and
+`/plugin install verbatra@verbatra` work too; the shell commands above make the
+scope explicit.
 
 What the plugin adds:
 
@@ -75,21 +82,25 @@ What the plugin adds:
   `verbatra-studio-agent-tools`, exactly as listed below.
 - **The MCP server** `verbatra`: `npx -y @verbatra/mcp@<version> --cwd <project>`,
   run over the project Claude Code has open. The version is pinned in
-  [`.mcp.json`](./.mcp.json), and the parity workflow fails when it falls behind
-  the last `@verbatra/mcp` release. The server needs a verbatra config in the
+  [`.mcp.json`](./.mcp.json), and the parity workflow fails whenever the pin differs
+  from the `@verbatra/mcp` version in the source repository. The server needs a verbatra config in the
   project, so run `npx verbatra init` there first. It reads a provider API key from
   the environment Claude Code runs in; the plugin has no key option and never
   should.
 - **Spending off by default.** The tools that call a translation provider and bill
   it are not listed until you set the plugin's `allowSpend` option, which the
   plugin passes to the server as `VERBATRA_MCP_ALLOW_SPEND`:
-  `claude plugin install verbatra@verbatra --config allowSpend=true`. Turn it on
-  only if you want an agent to be able to spend. A project whose provider is
+  `claude plugin install verbatra@verbatra -s project --config allowSpend=true`.
+  Claude Code keeps plugin options in your user settings and ignores them in a
+  project's committed settings, so a repository cannot switch spending on for you.
+  Turn it on only if you want an agent to be able to spend. A project whose provider is
   `none` never lists those tools, whatever the option says.
-- **A locale-edit hook.** After Claude edits or writes a file that can be a locale
-  file, the hook runs the project's own `verbatra check --qa --severity error --json`
-  and, when a committed translation breaks a placeholder, inline markup or ICU,
-  hands the findings back to Claude so it fixes them before moving on. It uses only
+- **A locale-edit hook.** After Claude edits or writes a file that matches the
+  config's `files.pattern`, the hook runs the project's own
+  `verbatra check --qa --severity error --json` and, when a translation in that
+  locale breaks a placeholder, inline markup or ICU, hands the findings back to
+  Claude so it fixes them before moving on. Lockfiles, CI files and tool configs are
+  skipped without running anything. It uses only
   the `@verbatra/cli` installed in the project's `node_modules` (0.12.0 or later),
   never downloads anything, calls no provider, reads no key, and stays silent for
   every other file and in a project without a local verbatra.
