@@ -87,8 +87,8 @@ when the operator granted spend.
 | `project.snapshot` | always | Read the resolved config: source and target locales, format, path pattern, provider id, where the config and the glossary come from, `humanEdits` and `prune`. Call it first. |
 | `status.check` | always | Per target locale, how many keys are missing, stale or up to date, how many of them are `protected`, and who wrote the current values (`provenance`). Optional `locales`. |
 | `status.diff` | always | Per target locale, the exact keys the next run would add, re-translate or orphan, the `protected` ones it would leave for a person, and `changedOrigins`. Optional `locales`. |
-| `glossary.get` | always | Read every configured term and its translation, and where the glossary comes from. |
-| `glossary.write` | always | Add, replace, or remove one term. Pass a non-empty string to set it, `null` to clear its shared translation. |
+| `glossary.get` | always | Read every term (shared `target`, per-locale `targets`, `forbidden` renderings, note, part of speech), the `doNotTranslate` terms, the format `version` and where the glossary comes from. Optional `locale` adds `effective`, the terms a translation into that locale is held to. |
+| `glossary.write` | always | Change one term: `translation`, per-`locale` translation and `forbidden` renderings, `note`, `partOfSpeech`, `caseSensitive`, or `doNotTranslate`. `null` clears a field. |
 | `lock.state` | always | Read the lock file version and the per-locale counts it implies. Reports `exists: false` before the first successful run. |
 | `key.integrity` | always | Report one key's placeholder, inline markup, and ICU drift against the lock baseline, per locale. |
 | `key.value` | always | Read one key's current source text, its current text in one target locale, and who wrote it (`provenance`). |
@@ -167,9 +167,23 @@ Read before you write, and diff before you spend.
 - A second call to `translation.translatePending`, or to an entry tool for the
   same locale and key, while the first is still running is refused with "A
   matching call is already in progress". Wait for the first result.
+- `glossary.write` changes only the fields you pass. `translation` without `locale`
+  is the translation for all locales; with `locale` (a configured target locale),
+  `translation` and `forbidden` apply to that locale only. `forbidden` replaces the
+  whole list for that locale, and `null` or an empty list clears it. `null` clears
+  `translation`, `note` or `partOfSpeech`; clearing the shared translation keeps the
+  term's per-locale data, and the term disappears only once nothing is left.
+  `doNotTranslate: true` keeps the term untranslated in every locale, `false` stops
+  that, and it combines with no field but `caseSensitive`. An edit that would leave
+  an invalid glossary fails with `CONFIG_INVALID` and writes nothing, and a
+  version 1 file is rewritten as version 2 only when the edit needs it. None of it
+  retranslates existing keys; a changed term only affects later translations.
+- Read `effective` from `glossary.get` with `locale` before checking a translation
+  against the glossary. A locale falls back to its base language and then to the
+  shared translation, so a term's `targets` alone can mislead.
 - `glossary.get` redacts values that are shaped like a provider API key before
-  returning them, replacing the text with `[REDACTED]` and naming the affected
-  terms in `redactedTerms`. Do not try to route around that, and never write a
+  returning them: every translation, forbidden rendering, note and part of speech
+  can come back as `[REDACTED]`, and `redactedTerms` names the affected terms. Do not try to route around that, and never write a
   redacted value back through `glossary.write`. `[REDACTED]` is a placeholder,
   not the original text, so a read-modify-write loop that passes it through
   destroys the real term. That loop is the natural shape of an agent edit, which
