@@ -2,7 +2,7 @@
   "mcpServers": {
     "verbatra": {
       "command": "npx",
-      "args": ["-y", "@verbatra/mcp@0.2.2", "--cwd", "${CLAUDE_PROJECT_DIR}"],
+      "args": ["-y", "@verbatra/mcp@0.3.0", "--cwd", "${CLAUDE_PROJECT_DIR}"],
       "env": {
         "VERBATRA_MCP_ALLOW_SPEND": "${user_config.allowSpend}"
       }

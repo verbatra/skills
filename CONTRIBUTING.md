@@ -131,8 +131,10 @@ repository itself (`.claude-plugin/plugin.json`). It picks the skills up from th
 server is declared in `.mcp.json` and the hook in `hooks/hooks.json`, which runs
 `hooks/check-locale-edit.mjs`.
 
-- When the parity suite reports that the pinned `@verbatra/mcp` version is behind the last
-  release, bump the pin in `.mcp.json` in the same change that syncs the skills.
+- The pinned `@verbatra/mcp` version in `.mcp.json` must equal the `version` in
+  `packages/mcp/package.json` at the source ref the parity suite runs against. Pin the version
+  the pending source release will produce, never an older one, so the plugin never starts a
+  server older than the skills describe.
 - `npm test` covers the hook script with fixtures; it never needs a real verbatra.
 - Validate the manifests with Claude Code itself:
 
@@ -165,6 +167,23 @@ Two forms freeze, and one form that looks like it should does not:
   `npm run validate` rejects a hex ref fragment that is not exactly 40 characters.
 
 A branch name resolves, but it tracks that branch's tip rather than freezing, so it is not a pin.
+
+### Release checklist
+
+Skills that document an unreleased verbatra are prepared on a branch and promoted to `main` only
+after that verbatra release is out:
+
+1. Sync the skill tables and the plugin's `@verbatra/mcp` pin to the source branch that will be
+   released. Against that branch the parity suite fails on exactly one test, the pin check, because
+   `packages/mcp/package.json` still holds the previous version until the source repository's
+   Version Packages pull request merges. That failure is the gate: it blocks promotion to `main`
+   before the pinned server exists on npm.
+2. Wait for the source release: the Version Packages pull request merged and `@verbatra/mcp`
+   published at the pinned version.
+3. Run `SOURCE_ROOT=<checkout of the released source> npm run test:parity`, `npm run validate`,
+   `npm test`, `npm run check:discovery` and `claude plugin validate .`. Every one must pass
+   before the branch reaches `main`.
+4. Merge to `main`, then re-vendor the three skills in `verbatra/verbatra`.
 
 Cutting a tag is the whole release: `git tag v0.2.0 <commit> && git push origin v0.2.0`. If a
 versioned changelog is ever wanted on top of that, the way to add it is changesets with a private

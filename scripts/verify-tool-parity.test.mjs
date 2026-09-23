@@ -652,9 +652,9 @@ function checkCommandBlock() {
 }
 
 describe("the claude code plugin runs the released stdio server", () => {
-  it("pins the mcp package to the version the source repository last released", () => {
-    const released = JSON.parse(readSourceFile("packages/mcp/package.json")).version;
-    expect(pinnedMcpVersion(pluginMcpServer().args)).toBe(released);
+  it("pins the mcp package to the packages/mcp/package.json version at the source ref", () => {
+    const atSourceRef = JSON.parse(readSourceFile("packages/mcp/package.json")).version;
+    expect(pinnedMcpVersion(pluginMcpServer().args)).toBe(atSourceRef);
   });
 
   it("launches the package through npx without a prompt", () => {
