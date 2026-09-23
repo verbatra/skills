@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { CHECK_ARGS } from "../hooks/check-locale-edit.mjs";
+import { checkArguments } from "../hooks/check-locale-edit.mjs";
 
 const SKILLS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -719,12 +719,12 @@ describe("the claude code plugin is one installable unit", () => {
 
 describe("the plugin hook runs a check the cli actually offers", () => {
   it("names a registered command", () => {
-    expect(cliCommands()).toContain(CHECK_ARGS[0]);
+    expect(cliCommands()).toContain(checkArguments("/project")[0]);
   });
 
   it("passes only options the check command registers", () => {
     const block = checkCommandBlock();
-    for (const flag of [...CHECK_ARGS.filter((arg) => arg.startsWith("--")), "--cwd"]) {
+    for (const flag of checkArguments("/project").filter((arg) => arg.startsWith("--"))) {
       expect(block).toMatch(new RegExp(`\\.option\\(\\s*"${flag}[ "]`));
     }
   });

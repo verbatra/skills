@@ -63,7 +63,7 @@ compares them to the tables and the spelled-out counts in the three skill docume
 | `## Tools` table in `verbatra-mcp-tools` | `ALL_TOOLS_IN_ORDER` and `SPEND_TOOL_NAMES` in `packages/mcp/src/tools/registry.ts`, cross-checked against every `name:` declared under `packages/mcp/src/tools/` |
 | `## Tools` table in `verbatra-studio-agent-tools` | `rpcParamsSchemas` in `packages/studio/src/shared/rpc/contract.ts` less `HUMAN_ONLY_METHOD_NAMES`, the `*_METHOD` constants beside it, and the `TOOL_DESCRIPTORS` (with their `spendGated` flag) in `packages/studio/src/webmcp/register-tools.ts` |
 | `.mcp.json` in the Claude Code plugin | the `version` in `packages/mcp/package.json`, and the flags and `ALLOW_SPEND_ENV_VAR` in `packages/mcp/src/bin.ts` |
-| `CHECK_ARGS` in `hooks/check-locale-edit.mjs` | the `check` command's `.option(...)` registrations in `packages/cli/src/run.ts` |
+| `checkArguments` in `hooks/check-locale-edit.mjs` | the `check` command's `.option(...)` registrations in `packages/cli/src/run.ts` |
 | Counts spelled out in prose ("one of these fourteen", "registers ... but advertises only ...") | derived from the same registries, never remembered |
 | Frontmatter `description` in all three skills | the same registries, asserted negatively: a description must name at most two real identifiers, so it cannot grow back into a stale second index |
 
