@@ -63,7 +63,7 @@ compares them to the tables and the spelled-out counts in the three skill docume
 | `## Tools` table in `verbatra-mcp-tools` | `ALL_TOOLS_IN_ORDER` and `SPEND_TOOL_NAMES` in `packages/mcp/src/tools/registry.ts`, cross-checked against every `name:` declared under `packages/mcp/src/tools/` |
 | `## Tools` table in `verbatra-studio-agent-tools` | `rpcParamsSchemas` in `packages/studio/src/shared/rpc/contract.ts` less `HUMAN_ONLY_METHOD_NAMES`, the `*_METHOD` constants beside it, and the `TOOL_DESCRIPTORS` (with their `spendGated` flag) in `packages/studio/src/webmcp/register-tools.ts` |
 | `.mcp.json` in the Claude Code plugin | the `version` in `packages/mcp/package.json`, and the flags and `ALLOW_SPEND_ENV_VAR` in `packages/mcp/src/bin.ts` |
-| `CHECK_ARGS` in `hooks/check-locale-edit.mjs` | the `check` command's `.option(...)` registrations in `packages/cli/src/run.ts` |
+| `checkArguments` in `hooks/check-locale-edit.mjs` | the `check` command's `.option(...)` registrations in `packages/cli/src/run.ts` |
 | Counts spelled out in prose ("one of these fourteen", "registers ... but advertises only ...") | derived from the same registries, never remembered |
 | Frontmatter `description` in all three skills | the same registries, asserted negatively: a description must name at most two real identifiers, so it cannot grow back into a stale second index |
 
@@ -73,9 +73,9 @@ the reason the pack is worth shipping at all.
 
 Because the source of truth is in another repository, the failure is now post-hoc: a change in
 `verbatra/verbatra` that renames a tool merges green there and turns this repository red
-afterwards. That is what the nightly schedule and the `repository_dispatch` trigger are for. When
-you add a command, a format, a provider, a tool or an RPC method over there, update the matching
-table here in the same working session.
+afterwards. That is what the nightly schedule and the `workflow_dispatch` the source
+repository's release workflow sends are for. When you add a command, a format, a provider, a tool
+or an RPC method over there, update the matching table here in the same working session.
 
 ## Running the checks
 
@@ -131,8 +131,10 @@ repository itself (`.claude-plugin/plugin.json`). It picks the skills up from th
 server is declared in `.mcp.json` and the hook in `hooks/hooks.json`, which runs
 `hooks/check-locale-edit.mjs`.
 
-- When the parity suite reports that the pinned `@verbatra/mcp` version is behind the last
-  release, bump the pin in `.mcp.json` in the same change that syncs the skills.
+- The pinned `@verbatra/mcp` version in `.mcp.json` must equal the `version` in
+  `packages/mcp/package.json` at the source ref the parity suite runs against. Pin the version
+  the pending source release will produce, never an older one, so the plugin never starts a
+  server older than the skills describe.
 - `npm test` covers the hook script with fixtures; it never needs a real verbatra.
 - Validate the manifests with Claude Code itself:
 
@@ -165,6 +167,23 @@ Two forms freeze, and one form that looks like it should does not:
   `npm run validate` rejects a hex ref fragment that is not exactly 40 characters.
 
 A branch name resolves, but it tracks that branch's tip rather than freezing, so it is not a pin.
+
+### Release checklist
+
+Skills that document an unreleased verbatra are prepared on a branch and promoted to `main` only
+after that verbatra release is out:
+
+1. Sync the skill tables and the plugin's `@verbatra/mcp` pin to the source branch that will be
+   released. Against that branch the parity suite fails on exactly one test, the pin check, because
+   `packages/mcp/package.json` still holds the previous version until the source repository's
+   Version Packages pull request merges. That failure is the gate: it blocks promotion to `main`
+   before the pinned server exists on npm.
+2. Wait for the source release: the Version Packages pull request merged and `@verbatra/mcp`
+   published at the pinned version.
+3. Run `SOURCE_ROOT=<checkout of the released source> npm run test:parity`, `npm run validate`,
+   `npm test`, `npm run check:discovery` and `claude plugin validate .`. Every one must pass
+   before the branch reaches `main`.
+4. Merge to `main`, then re-vendor the three skills in `verbatra/verbatra`.
 
 Cutting a tag is the whole release: `git tag v0.2.0 <commit> && git push origin v0.2.0`. If a
 versioned changelog is ever wanted on top of that, the way to add it is changesets with a private

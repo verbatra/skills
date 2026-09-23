@@ -147,9 +147,8 @@ over the stdio MCP server. Do not reference them when working against that serve
   translation run refreshes. An unavailable result means no run has ever recorded
   one, which is not the same as an empty queue or zero usage. A key leaves the
   review queue once a person approves or rejects it in the dashboard, rewrites it,
-  or it loses its translation; a key you fixed with
-  `verbatra_translation_editEntry` stays listed, because an agent's edit still
-  needs a person's review.
+  or it loses its translation. A key you fixed with `verbatra_translation_editEntry`
+  stays listed, because an agent's edit still needs a person's review.
 - Protected keys are left for a person. A stale value a person wrote, imported or
   changed outside verbatra, and any key matching `pinnedKeys`, is skipped by
   `verbatra_translation_translatePending` and listed under each locale's
