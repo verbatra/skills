@@ -191,6 +191,76 @@ function providerEnvVars() {
   return byId;
 }
 
+function quotedCodes(block) {
+  return [...block.matchAll(/"([A-Z][A-Z0-9_]*)"/g)].map((match) => match[1]);
+}
+
+function unionMembers(relativePath, opening, label) {
+  return [
+    ...sourceBlock(readSourceFile(relativePath), opening, ";", label).matchAll(/"([^"]+)"/g),
+  ].map((match) => match[1]);
+}
+
+function sdkErrorCodes() {
+  return unionMembers("packages/sdk/src/errors.ts", "export type SdkErrorCode =", "SdkErrorCode").sort();
+}
+
+function sdkNoticeCodes() {
+  return unionMembers(
+    "packages/sdk/src/flow/summary.ts",
+    "export type SdkNoticeCode =",
+    "SdkNoticeCode",
+  ).sort();
+}
+
+function doctorCheckIds() {
+  return unionMembers("packages/sdk/src/flow/doctor.ts", "export type DoctorCheckId =", "DoctorCheckId");
+}
+
+function doctorStandardRunIds() {
+  const dependent = sourceBlock(
+    readSourceFile("packages/sdk/src/flow/doctor.ts"),
+    "const CONFIG_DEPENDENT_IDS: readonly DoctorCheckId[] = [",
+    "];",
+    "CONFIG_DEPENDENT_IDS",
+  );
+  return ["config", ...[...dependent.matchAll(/"([^"]+)"/g)].map((match) => match[1])];
+}
+
+function cliDeclaredCodes() {
+  const directory = resolve(SOURCE_ROOT, "packages/cli/src");
+  const codes = new Set();
+  for (const entry of readdirSync(directory)) {
+    if (!entry.endsWith(".ts") || entry.endsWith(".test.ts")) {
+      continue;
+    }
+    for (const code of quotedCodes(readFileSync(resolve(directory, entry), "utf8"))) {
+      codes.add(code);
+    }
+  }
+  return codes;
+}
+
+function allBackticked(cell) {
+  return [...cell.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+}
+
+function skillErrorCodes() {
+  return tableRowsUnder(readSkillFile(CLI_SKILL), "## Error and notice codes", CLI_SKILL).flatMap(
+    (cells) => allBackticked(cells[0]),
+  );
+}
+
+function skillNoticeCodes() {
+  const sentence = sourceBlock(
+    readSkillFile(CLI_SKILL),
+    "`result.locales[].notices` with a `code`:",
+    "plus the codes a provider raises",
+    "notice code list",
+  );
+  return allBackticked(sentence);
+}
+
 function mcpToolNameByIdentifier() {
   const registry = readSourceFile("packages/mcp/src/tools/registry.ts");
   const byIdentifier = new Map();
@@ -487,6 +557,48 @@ describe("the cli skill enumerates the real cli surface", () => {
     for (const cells of rows.filter((row) => !factories.has(backticked(row[0])))) {
       expect(backticked(cells[1])).toBeUndefined();
     }
+  });
+});
+
+describe("the cli skill enumerates the real doctor checks and sdk codes", () => {
+  const skill = readSkillFile(CLI_SKILL);
+  const doctorRows = tableRowsUnder(skill, "## doctor", CLI_SKILL);
+
+  it("lists the standard doctor checks in the order a run reports them", () => {
+    expect(doctorRows.map((cells) => backticked(cells[0]))).toEqual(doctorStandardRunIds());
+  });
+
+  it("covers every declared doctor check id between the table and the --literals prose", () => {
+    const literalsOnly = doctorCheckIds().filter((id) => !doctorStandardRunIds().includes(id));
+    const doctor = sourceBlock(skill, "## doctor", "\n## ", "doctor section");
+    for (const id of literalsOnly) {
+      expect(doctor).toContain(`\`${id}\``);
+    }
+    expect([...doctorStandardRunIds(), ...literalsOnly].sort()).toEqual(doctorCheckIds().sort());
+  });
+
+  it("states the standard doctor check count the source declares", () => {
+    expect(skill).toContain(`always these ${spelled(doctorStandardRunIds().length)} in this order`);
+  });
+
+  it("lists every SdkErrorCode in the error code table", () => {
+    const listed = new Set(skillErrorCodes());
+    expect(sdkErrorCodes().filter((code) => !listed.has(code))).toEqual([]);
+  });
+
+  it("lists every error code only once", () => {
+    const codes = skillErrorCodes();
+    expect(codes.length).toBe(new Set(codes).size);
+  });
+
+  it("lists no error code beyond the SdkErrorCode union and the codes the cli declares", () => {
+    const sdk = new Set(sdkErrorCodes());
+    const cli = cliDeclaredCodes();
+    expect(skillErrorCodes().filter((code) => !sdk.has(code) && !cli.has(code))).toEqual([]);
+  });
+
+  it("lists exactly the SdkNoticeCode union as run notices", () => {
+    expect(skillNoticeCodes().sort()).toEqual(sdkNoticeCodes());
   });
 });
 

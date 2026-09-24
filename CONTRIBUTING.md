@@ -60,6 +60,9 @@ compares them to the tables and the spelled-out counts in the three skill docume
 | `## Formats` table in `verbatra-cli` | `SUPPORTED_FORMATS` in `packages/core/src/model/supported-format.ts` |
 | `## Providers` first column in `verbatra-cli` | the `id` literals of `providerConfigSchema` in `packages/sdk/src/config/provider-config.ts`, every one but `none` backed by `providerFactories` |
 | `## Providers` second column in `verbatra-cli` | `PROVIDER_ENV` and `OPENAI_COMPATIBLE_ENV_VAR` in `packages/ai-providers/src/key-env-vars.ts`; `none` names no variable |
+| `## doctor` table in `verbatra-cli` | `"config"` then `CONFIG_DEPENDENT_IDS` in `packages/sdk/src/flow/doctor.ts`, in order; every other `DoctorCheckId` is named in the section's prose |
+| `## Error and notice codes` table in `verbatra-cli` | every `SdkErrorCode` in `packages/sdk/src/errors.ts`, once each; any other code must be a string literal declared under `packages/cli/src/` |
+| Notice code list under `## Error and notice codes` in `verbatra-cli` | `SdkNoticeCode` in `packages/sdk/src/flow/summary.ts` |
 | `## Tools` table in `verbatra-mcp-tools` | `ALL_TOOLS_IN_ORDER` and `SPEND_TOOL_NAMES` in `packages/mcp/src/tools/registry.ts`, cross-checked against every `name:` declared under `packages/mcp/src/tools/` |
 | `## Tools` table in `verbatra-studio-agent-tools` | `rpcParamsSchemas` in `packages/studio/src/shared/rpc/contract.ts` less `HUMAN_ONLY_METHOD_NAMES`, the `*_METHOD` constants beside it, and the `TOOL_DESCRIPTORS` (with their `spendGated` flag) in `packages/studio/src/webmcp/register-tools.ts` |
 | `.mcp.json` in the Claude Code plugin | the `version` in `packages/mcp/package.json`, and the flags and `ALLOW_SPEND_ENV_VAR` in `packages/mcp/src/bin.ts` |
