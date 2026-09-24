@@ -227,18 +227,15 @@ function doctorStandardRunIds() {
   return ["config", ...[...dependent.matchAll(/"([^"]+)"/g)].map((match) => match[1])];
 }
 
-function cliDeclaredCodes() {
-  const directory = resolve(SOURCE_ROOT, "packages/cli/src");
-  const codes = new Set();
-  for (const entry of readdirSync(directory)) {
-    if (!entry.endsWith(".ts") || entry.endsWith(".test.ts")) {
-      continue;
-    }
-    for (const code of quotedCodes(readFileSync(resolve(directory, entry), "utf8"))) {
-      codes.add(code);
-    }
-  }
-  return codes;
+function cliErrorCodes() {
+  return quotedCodes(
+    sourceBlock(
+      readSourceFile("packages/cli/src/cli-error-codes.ts"),
+      "export const CLI_ERROR_CODES = [",
+      "] as const;",
+      "CLI_ERROR_CODES",
+    ),
+  ).sort();
 }
 
 function allBackticked(cell) {
@@ -247,6 +244,12 @@ function allBackticked(cell) {
 
 function skillErrorCodes() {
   return tableRowsUnder(readSkillFile(CLI_SKILL), "## Error and notice codes", CLI_SKILL).flatMap(
+    (cells) => allBackticked(cells[0]),
+  );
+}
+
+function skillInitCodes() {
+  return tableRowsUnder(readSkillFile(CLI_SKILL), "## Setting a project up", CLI_SKILL).flatMap(
     (cells) => allBackticked(cells[0]),
   );
 }
@@ -591,10 +594,28 @@ describe("the cli skill enumerates the real doctor checks and sdk codes", () => 
     expect(codes.length).toBe(new Set(codes).size);
   });
 
-  it("lists no error code beyond the SdkErrorCode union and the codes the cli declares", () => {
+  it("lists no error code beyond the SdkErrorCode union and CLI_ERROR_CODES", () => {
     const sdk = new Set(sdkErrorCodes());
-    const cli = cliDeclaredCodes();
+    const cli = new Set(cliErrorCodes());
     expect(skillErrorCodes().filter((code) => !sdk.has(code) && !cli.has(code))).toEqual([]);
+  });
+
+  it("documents every CLI_ERROR_CODES entry in the error table or the init table", () => {
+    const listed = new Set([...skillErrorCodes(), ...skillInitCodes()]);
+    expect(cliErrorCodes().filter((code) => !listed.has(code))).toEqual([]);
+  });
+
+  it("lists only CLI_ERROR_CODES entries in the init failure table", () => {
+    const cli = new Set(cliErrorCodes());
+    expect(skillInitCodes().filter((code) => !cli.has(code))).toEqual([]);
+  });
+
+  it("names the exported code list where it describes the codes the cli raises", () => {
+    const codes = sourceBlock(skill, "## Error and notice codes", "\n## ", "error codes section");
+    expect(codes).toContain("`CLI_ERROR_CODES` from `@verbatra/cli`");
+    expect(readSourceFile("packages/cli/src/lib.ts")).toMatch(
+      /export \{[^}]*\bCLI_ERROR_CODES\b[^}]*\} from "\.\/cli-error-codes\.js";/,
+    );
   });
 
   it("lists exactly the SdkNoticeCode union as run notices", () => {
@@ -650,10 +671,12 @@ describe("the studio skill enumerates the real webmcp tool surface", () => {
 });
 
 describe("the two agent surfaces stay distinguishable", () => {
-  it("gives studio exactly the two methods the stdio registry does not have", () => {
+  it("gives studio exactly the four methods the stdio registry does not have", () => {
     const stdio = new Set(mcpRegistry().all);
     expect(studioRpcMethods().filter((method) => !stdio.has(method))).toEqual([
       "history.list",
+      "key.context",
+      "locale.integrity",
       "locale.values",
     ]);
   });
@@ -699,6 +722,14 @@ describe("prose counts are derived, not remembered", () => {
     const boundary = sourceBlock(skill, "## The spend boundary", "\n## ", "spend boundary");
     for (const name of mcpRegistry().spendGated) {
       expect(boundary).toContain(`\`${name}\``);
+    }
+  });
+
+  it("names every method reserved for a person where it explains the human-only boundary", () => {
+    const skill = readSkillFile(STUDIO_SKILL);
+    const gates = sourceBlock(skill, "## Two gates, not one", "\n## ", "two gates");
+    for (const method of studioHumanOnlyMethods()) {
+      expect(gates).toContain(`\`${method}\``);
     }
   });
 

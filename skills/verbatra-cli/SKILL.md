@@ -228,14 +228,18 @@ exits, so the next run does not wait on them. A lock left behind by a process th
 was killed outright is reclaimed automatically by the next run on the same machine
 once that process is gone; one left by another machine or an older verbatra is
 not, and the locale fails with `LOCK_CONTENDED` naming the lock file under
-`.verbatra-local/locks/`. While a run waits for a lock another process holds, it
-says so on stderr once the wait passes a second (a `{"type":"lock-wait"}` record
-under `--json`); delete the named file only when no verbatra process is running.
-`--lock-timeout <seconds>` (default 600, at most 3600) on `translate` and `watch`
-bounds only the waits before any provider call: the locale write lock and the
-lock-file guard for a respelled locale's state. The guard taken to record a file
-the run already wrote always allows the ten-minute default, so a written file is
-never left unrecorded.
+`.verbatra-local/locks/`. A lock whose process is still alive but whose file has
+not been refreshed for three heartbeat intervals is treated as abandoned too. A
+holder checks that the lock is still its own before every write it protects, and
+stops with `LOCK_CONTENDED` without writing when another process has taken it
+over. While a run waits for a lock another process holds, it says so on stderr
+once the wait passes a second (a `{"type":"lock-wait"}` record under `--json`);
+delete the named file only when no verbatra process is running.
+`--lock-timeout <seconds>` (default 600, at most 3600) on `translate`, `watch` and
+`import` bounds only the waits before any provider call or write: the locale write
+lock and the lock-file guard for a respelled locale's state. The guard taken to
+record a file the run already wrote always allows the ten-minute default, so a
+written file is never left unrecorded.
 
 Do not run a verbatra gate under `set -e`: a non-zero exit is the answer you asked
 for, not a crash.
@@ -273,6 +277,52 @@ life of the process. A failed run is a record on that stream. It does not stop t
 watcher and does not change the exit code, so treat it as an event to report, not
 a reason to restart the process.
 
+## Human output on stderr
+
+Everything below is for a person watching a terminal. It never reaches stdout,
+and `--json` output is byte-identical whatever the flags and the terminal; parse
+the envelope, never these lines.
+
+Two global flags go before or after the command name:
+
+- `-q, --quiet` prints only results and errors: no progress, no notices, no
+  `next:` hints. Warnings a person must see, such as a lock wait or keys left
+  protected, still print.
+- `--no-color` never colours the output. `VERBATRA_NO_COLOR` does the same from
+  the environment. `NO_COLOR`, `NODE_DISABLE_COLORS`, `TERM=dumb` and a truthy
+  `CI` also turn colour off, and `FORCE_COLOR` turns it on or off unless
+  `--no-color` or `VERBATRA_NO_COLOR` is set.
+
+The spinner runs only when stderr is a terminal, `CI` is not set and `TERM` is not
+`dumb`; `VERBATRA_NO_SPINNER` turns it off. Otherwise each step is one plain
+`verbatra: ...` line, which is what a CI log shows.
+
+What a human-readable run prints:
+
+- A start line naming the work (`translating 3 locales with gemini/...`,
+  `dry run over 3 locales, no provider call`), then one outcome line:
+  `[ok] done in 4.2s`, `[ok] dry run done in ..., nothing written`, or
+  `[warn] finished in ..., see the summary above` when the exit code is not `0`.
+- `next:` hints with the command to run after it, such as `verbatra check` after a
+  successful translate. A hint repeats the `--cwd` and `--config` the command was
+  given, so it can be run as printed.
+- A dry run counts keys as `would translate` (`would import` for `import`) and
+  `would prune`, never as translated.
+- File paths inside the working directory print relative to it; paths outside it
+  stay absolute.
+- `watch` says `watching <source> (<pattern>); running initial translation`, then
+  `waiting for changes...` between runs, `change detected: <paths>` when a source
+  file is saved, and `stopped` at the end.
+- `studio` prints its URL with the session token on stdout, then on stderr whether
+  spend tools and agent tools are on or off, and `Studio stopped` at the end.
+  `studio --verbose` also prints one `METHOD path status` line per request, with
+  the token masked.
+- `mcp` prints `verbatra MCP server running on stdio (project <dir>, spend tools
+  on|off)` once it is ready and `verbatra MCP server stopped (client closed stdin)`
+  or `(interrupted)` at the end. Started by hand in a terminal, it also prints how
+  to add it to a client, how to inspect it, and `Press Ctrl-C to stop.`
+- `watch` and `studio` print `press Ctrl-C to stop` when stdin is a terminal.
+
 ## Error and notice codes
 
 A whole-command failure exits `2` with one of these as `code`. The same codes, and
@@ -286,7 +336,7 @@ exits `1`.
 | `UNKNOWN_FORMAT`, `UNKNOWN_LOCALE`, `UNKNOWN_KEY` | A format, locale or key that is not configured or not in the source. Take the values from the config. |
 | `SOURCE_UNREADABLE`, `SOURCE_INVALID`, `SOURCE_UNWRITABLE` | The source locale file (or an import file) is missing, unparseable, or, for `extract`, unwritable. |
 | `LOCK_FILE_INVALID`, `PROVENANCE_FILE_INVALID`, `PROVENANCE_FILE_UNWRITABLE` | `verbatra.lock.json` or `verbatra.provenance.json` is corrupt, too large or from a newer verbatra. Restore it from version control; never delete it to get past this. |
-| `LOCK_CONTENDED` | Another process holds a write lock past the timeout, or a lock was left by another machine or an older verbatra. See the lock paragraph under Exit codes. |
+| `LOCK_CONTENDED` | Another process holds a write lock past the timeout, took over a lock this run held, or a lock was left by another machine or an older verbatra. See the lock paragraph under Exit codes. |
 | `LOCALE_STATE_NOT_CARRIED_OVER` | Never thrown; a locale whose respelled state could not be moved did not run. Re-run once the other process is done. |
 | `KEY_PROTECTED`, `KEY_PINNED` | A single-key machine write refused a person's value or a `pinnedKeys` key. Leave it for a person. |
 | `MACHINE_TRANSLATION_DISABLED` | Provider `none`: a provider-spending action was refused before any key was read. |
@@ -301,6 +351,12 @@ exits `1`.
 | `REVIEW_VALUE_CHANGED`, `REVIEW_SOURCE_CHANGED`, `REVIEW_REJECT_UNSUPPORTED`, `REVIEW_RESTORE_FAILED`, `REVIEWER_INVALID` | Review decisions, which only a person makes. `xliff` cannot reject a value, since a unit without a target reads as its source; every other format, `arb` included, can. |
 | `LOCALE_FAILED`, `CLI_ERROR` | Fallbacks for a failed locale, or a command failure, that carried no code of its own. |
 | `USAGE_ERROR`, `INVALID_LOCALES`, `INVALID_LOCALE`, `INVALID_OUT`, `INVALID_FORMAT`, `INVALID_DIRECTION`, `INVALID_QA_OPTION`, `INVALID_SEVERITY`, `INVALID_CONCURRENCY`, `INVALID_MAX_TOKENS`, `INVALID_LOCK_TIMEOUT`, `INVALID_DEBOUNCE`, `INVALID_PORT` | A flag value the CLI refused before anything ran. |
+
+The codes the CLI raises itself, as opposed to the ones it passes through from the
+SDK or a provider, are exported as `CLI_ERROR_CODES` from `@verbatra/cli`: the
+fallback `CLI_ERROR`, the flag codes in the last row above, and the `init` codes
+under Setting a project up. A script that validates a `code` can import that list
+instead of copying this table.
 
 A run that completed can still carry notices, each in
 `result.locales[].notices` with a `code`: `PLURAL_CATEGORIES_INCOMPLETE`,
