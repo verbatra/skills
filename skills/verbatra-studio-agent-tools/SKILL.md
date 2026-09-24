@@ -20,8 +20,8 @@ exits `2` and names the fix, including
 installing. Starting Studio is the operator's step, not yours.
 
 This is one of two agent surfaces and the sets differ. The stdio MCP server has
-fourteen tools with dotted names such as `status.check`; Studio has sixteen, with
-underscored names such as `verbatra_status_check`, and adds two the stdio server
+fourteen tools with dotted names such as `status.check`; Studio has eighteen, with
+underscored names such as `verbatra_status_check`, and adds four the stdio server
 does not have. `verbatra-mcp-tools` covers the stdio server. `verbatra-cli` covers
 the binary. Do not assume a tool exists on one surface because you saw it on the
 other.
@@ -70,7 +70,7 @@ Studio decides twice what an agent may do, and the two decisions are independent
    `verbatra_translation_translatePending`, are still skipped during registration
    unless Studio was also started with `--allow-spend` (or
    `VERBATRA_STUDIO_ALLOW_SPEND`) and the config names a translation provider.
-   The other fourteen register either way. `verbatra_project_snapshot` says which:
+   The other sixteen register either way. `verbatra_project_snapshot` says which:
    `capabilities.spend` is true only when both hold, and when it is false,
    `capabilities.spendWithheld` is `flag` (spend was not granted) or `policy` (the
    project is human-only, provider `none`, so no flag can grant it).
@@ -84,8 +84,15 @@ Local editing and pricing are never gated. `verbatra_translation_editEntry`,
 when agent tools are on, because they call no provider.
 
 Approving or rejecting a review entry is reserved for a person. The dashboard's
-`review.approve` and `review.reject` methods are never registered as tools, on
-purpose: an agent cannot sign off its own work. When a person rejects a value, it
+`review.approve` and `review.reject` methods, and their bulk forms
+`review.approveMany` and `review.rejectMany`, are never registered as tools, on
+purpose: an agent cannot sign off its own work. The same holds for
+`translation.retranslateEntries`, the dashboard's retranslate-a-selection action,
+and `translation.inFlight`, which only tells the page whether a run is already
+going. There is no agent tool for any of them; act on one key at a time with the
+tools below, and leave bulk decisions to the person at the dashboard. The
+dashboard's keyboard shortcuts drive the same human-only actions and are not
+something an agent triggers. When a person rejects a value, it
 is removed from the locale file; an `xliff` project refuses that with
 `REVIEW_REJECT_UNSUPPORTED`, since a unit without a target reads as its source,
 while every other format, `arb` included, allows it.
@@ -108,17 +115,19 @@ the glossary comes from, so read that before you try to write a term.
 | `verbatra_lock_state` | `lock.state` | always | Read the lock baseline and the per-locale counts it implies. |
 | `verbatra_history_list` | `history.list` | always | Recent git commits touching the source or a target locale file. Reports itself unavailable outside a git repository. |
 | `verbatra_key_integrity` | `key.integrity` | always | Whether one key's value keeps the source placeholders and inline markup, stays valid ICU, and has ICU plural, ordinal and select arms that fit the target language, per locale. Optional `locales`. |
+| `verbatra_locale_integrity` | `locale.integrity` | always | Every translation that fails those same checks right now, per target locale, in one call. Judges every key present in both the source and the locale, whatever its sync state, and lists only the failing ones. Optional `locales`. |
 | `verbatra_review_queue` | `review.queue` | always | The entries the last recorded run flagged for human review, with reason codes. |
 | `verbatra_usage_summary` | `usage.summary` | always | Token usage and budget figures recorded by the last run. |
-| `verbatra_key_value` | `key.value` | always | Source and target text for exactly one key in one locale. |
+| `verbatra_key_value` | `key.value` | always | Source and target text for exactly one key in one locale, with the key's translator `description` and who wrote the target (`provenance`). |
+| `verbatra_key_context` | `key.context` | always | What a translator needs for one key in one locale: source, target, `description`, `provenance`, the glossary terms that apply, and the key's `maxLength` when the config sets one. Optional `draft` adds a `draftCheck` against those terms. |
 | `verbatra_locale_values` | `locale.values` | always | Source and target text for every key across every locale, in one call. |
 | `verbatra_translation_editEntry` | `translation.editEntry` | always | Write a known translation for one key in one locale, recorded as written by an agent. No provider call. |
 | `verbatra_translation_estimate` | `translation.estimate` | always | Price what a pending run would send, per locale and in total. No provider call, no key read. |
 | `verbatra_translation_retranslateEntry` | `translation.retranslateEntry` | spend gated | Ask the provider for a fresh translation of one key in one locale. |
 | `verbatra_translation_translatePending` | `translation.translatePending` | spend gated | Translate every missing or stale key in one run, optionally only some `locales` and under a `maxTokens` ceiling. |
 
-`verbatra_history_list` and `verbatra_locale_values` are what this surface adds
-over the stdio MCP server. Do not reference them when working against that server.
+`verbatra_history_list`, `verbatra_locale_integrity`, `verbatra_key_context` and
+`verbatra_locale_values` are what this surface adds over the stdio MCP server. Do not reference them when working against that server.
 
 ## How to work
 
@@ -130,13 +139,17 @@ over the stdio MCP server. Do not reference them when working against that serve
 3. Reach for `verbatra_key_value` for one key and `verbatra_locale_values` only
    when you genuinely need bulk content, such as searching values rather than key
    names. Its result can be very large.
-4. If you already know the correct text, `verbatra_translation_editEntry`. It
+4. To find what is broken across a whole locale, `verbatra_locale_integrity`
+   rather than `verbatra_key_integrity` key by key. Before writing a value, call
+   `verbatra_key_context` with the value as `draft` and fix what its `draftCheck`
+   flags.
+5. If you already know the correct text, `verbatra_translation_editEntry`. It
    spends nothing, and it never obtains a translation: exactly the text you send is
    what gets written. It goes through the placeholder and ICU integrity gate first,
    so a rejected value is returned with a reason and nothing is written.
-5. Before asking, `verbatra_translation_estimate` with the same `locales` you
+6. Before asking, `verbatra_translation_estimate` with the same `locales` you
    intend to translate, and show its figure next to the diff.
-6. Only after an explicit yes, and only if the tool is registered, use the two
+7. Only after an explicit yes, and only if the tool is registered, use the two
    spend-gated tools.
 
 ## Traps specific to this surface
@@ -170,6 +183,20 @@ over the stdio MCP server. Do not reference them when working against that serve
   `markupMatches` with `markupDetails`, never the full source or target text. Unlike
   the stdio server's `key.integrity`, the fields sit on the locale itself, with no
   `entries` list.
+- `verbatra_locale_integrity` answers differently from `verbatra_key_integrity`.
+  It returns each locale with an `entries` list holding only failing keys, each
+  with its `key` and the same verdict fields, so an empty list means every
+  translation in that locale passes. A missing key has no translation to judge
+  and never appears. An explicitly empty `locales` array is rejected.
+- `verbatra_key_context` judges a `draft` by the same rules a translate run uses
+  to flag a translation for review: for each applying term whether the draft uses
+  the required translation and which forbidden renderings it contains, and for
+  each term to keep untranslated whether the draft kept it. A clean `draftCheck`
+  is not the integrity gate; `verbatra_translation_editEntry` still runs that.
+  Respect `maxLength` when it is present. When the glossary file cannot be read,
+  the glossary part is empty and `glossaryNotice` carries the error's `code` and
+  `message`; the rest of the result is still answered, so do not read an empty
+  glossary as "no terms apply" while a notice is present.
 - `verbatra_translation_translatePending` reports each key the integrity gate
   refused under its locale's `integrityRefusals` (`key`, a `reason` of
   `placeholder`, `markup`, `icu`, `degenerate` or `empty`, and `details` when one
