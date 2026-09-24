@@ -19,6 +19,12 @@ dashboard exposes a different, larger set of browser tools with different names;
 `verbatra_`, you are on the Studio surface, not this one. For driving the binary
 from a shell instead, see `verbatra-cli`.
 
+`verbatra mcp` needs `@verbatra/mcp` beside the CLI; without it the command exits
+`2` and says so. `npx -y @verbatra/mcp` runs the server on its own, and takes the
+same `--cwd`, `--config` and `--allow-spend`. Without `--cwd` the server runs over
+`CLAUDE_PROJECT_DIR` when that names an existing directory, which is what Claude
+Code sets for a server it starts, and over its own working directory otherwise.
+
 ## Non-negotiable rules
 
 1. Keys live in environment variables only. verbatra reads `ANTHROPIC_API_KEY`,
@@ -67,8 +73,8 @@ Everything else, including writing a corrected translation with
 run with `translation.estimate`, is always registered and calls no provider.
 
 The server also sends MCP `instructions` on connect that restate this order of
-work and these boundaries; read them, they come from the same source as the
-tools.
+work, the spend boundary, protected keys, untrusted content, redaction and the
+result shape; read them, they come from the same source as the tools.
 
 Registered is not the same as usable. `glossary.write` needs a file-backed
 glossary: on a project whose glossary is written inline in the config, or has
@@ -90,10 +96,10 @@ when the operator granted spend.
 | `glossary.get` | always | Read every term (shared `target`, per-locale `targets`, `forbidden` renderings, note, part of speech), the `doNotTranslate` terms, the format `version` and where the glossary comes from. Optional `locale` adds `effective`, the terms a translation into that locale is held to. |
 | `glossary.write` | always | Change one term: `translation`, per-`locale` translation and `forbidden` renderings, `note`, `partOfSpeech`, `caseSensitive`, or `doNotTranslate`. `null` clears a field. |
 | `lock.state` | always | Read the lock file version and the per-locale counts it implies. Reports `exists: false` before the first successful run. |
-| `key.integrity` | always | Report one key's placeholder, inline markup, and ICU drift against the lock baseline, per locale. |
+| `key.integrity` | always | Report one key's placeholder, inline markup, ICU syntax and ICU plural, ordinal and select arm drift against the lock baseline, per target locale. Optional `locales`. |
 | `key.value` | always | Read one key's current source text, its current text in one target locale, and who wrote it (`provenance`). |
 | `translation.editEntry` | always | Write a manual translation for one key in one locale, recorded with origin `agent`. No provider call. |
-| `translation.estimate` | always | Price what `translation.translatePending` would send, per locale and in total. No provider call, no key read. Optional `locales`. |
+| `translation.estimate` | always | Price what `translation.translatePending` would send: a dry-run summary whose `estimate` carries keys, requests, tokens or characters per locale and in total, a `cost` when the config's rates cover the provider (`pricing` says why not), and `caveats`. No provider call, no key read. Optional `locales`. |
 | `translation.retranslateEntry` | spend gated | Ask the provider for a fresh translation of one key in one locale. |
 | `translation.translatePending` | spend gated | Translate every missing or stale key in one run. Optional `locales` and a `maxTokens` ceiling. |
 | `review.queue` | always | Read the keys the last run flagged for human review and a person has not decided yet, with the reason for each. |
@@ -148,6 +154,23 @@ Read before you write, and diff before you spend.
   Report them; do not route around them with an edit.
 - A `maxTokens` ceiling withholds the requests that would cross it rather than
   sending them; their keys are listed under `budgetWithheld` and stay pending.
+- `translation.translatePending` reports each key the integrity gate refused
+  under its locale's `integrityRefusals`, with `key`, a `reason` of
+  `placeholder`, `markup`, `icu`, `degenerate` or `empty`, and, when one part is at
+  fault, `details` such as `-{name}` for a dropped placeholder or the ICU arm that
+  does not fit the target language. The previous value stayed; report the refusal.
+  A locale whose state is still recorded under an old spelling of its code (such
+  as `pt_BR` for `pt-BR`) is moved over first and reports the notice
+  `LOCALE_STATE_CARRIED_OVER`; if the move could not happen it reports
+  `LOCALE_STATE_CARRY_OVER_SKIPPED`, and when the lock or provenance state stayed
+  behind the locale fails with `LOCALE_STATE_NOT_CARRIED_OVER` without running.
+- `key.integrity` returns a row for every locale in scope, each with an `entries`
+  list. An empty list means the key has no lock baseline there yet or its source
+  still matches it: checked and unchanged, not verified correct. Each entry carries
+  `hasPlaceholders`, `matches`, `missing` and `extra` placeholders, `icuValid`,
+  `icuArmsMatch` with one short problem per wrong arm in `icuArmDetails`, and
+  `markupMatches` with `markupDetails`. It never returns the full source or target
+  text.
 - `translation.translatePending` is not idempotent. A second call bills again for
   whatever is still pending. It is not all or nothing either: a run that fails
   partway can leave some locales written and others untouched. Never retry it as
@@ -160,7 +183,11 @@ Read before you write, and diff before you spend.
   person's review.
 - Every tool returns `structuredContent` matching its declared `outputSchema`,
   plus the same JSON as text, and carries `readOnlyHint`, `destructiveHint`,
-  `idempotentHint` and `openWorldHint` annotations. A failed call comes back with
+  `idempotentHint` and `openWorldHint` annotations. Every tool but four is
+  read-only. `translation.editEntry` and `glossary.write` are destructive but
+  idempotent and stay local; `translation.retranslateEntry` and
+  `translation.translatePending` are destructive, not idempotent, and open-world,
+  because they call the provider. A failed call comes back with
   `isError: true` and a message led by an error code such as `UNKNOWN_KEY`.
   `OUTPUT_SCHEMA_MISMATCH` from a tool that writes means the call ran and its
   changes were applied: do not retry it, read the current state instead.
@@ -175,9 +202,12 @@ Read before you write, and diff before you spend.
   term's per-locale data, and the term disappears only once nothing is left.
   `doNotTranslate: true` keeps the term untranslated in every locale, `false` stops
   that, and it combines with no field but `caseSensitive`. An edit that would leave
-  an invalid glossary fails with `CONFIG_INVALID` and writes nothing, and a
-  version 1 file is rewritten as version 2 only when the edit needs it. None of it
-  retranslates existing keys; a changed term only affects later translations.
+  an invalid glossary fails with `CONFIG_INVALID` and writes nothing, a glossary
+  file or write lock that cannot be written fails with `GLOSSARY_UNWRITABLE`,
+  another writer holding the glossary lock past its timeout fails with
+  `LOCK_CONTENDED`, and a version 1 file is rewritten as version 2 only when the
+  edit needs it. None of it retranslates existing keys; a changed term only
+  affects later translations.
 - Read `effective` from `glossary.get` with `locale` before checking a translation
   against the glossary. A locale falls back to its base language and then to the
   shared translation, so a term's `targets` alone can mislead.

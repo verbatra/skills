@@ -14,6 +14,11 @@ Verbatra Studio is a local web dashboard over one verbatra project, started with
 WebMCP tools in the page, so a browser agent with a Studio tab open can read and
 change the project without a shell.
 
+`verbatra studio` needs `@verbatra/studio` beside the CLI; without it the command
+exits `2` and names the fix, including
+`npx -y -p @verbatra/cli -p @verbatra/studio verbatra studio` to run both without
+installing. Starting Studio is the operator's step, not yours.
+
 This is one of two agent surfaces and the sets differ. The stdio MCP server has
 fourteen tools with dotted names such as `status.check`; Studio has sixteen, with
 underscored names such as `verbatra_status_check`, and adds two the stdio server
@@ -80,7 +85,10 @@ when agent tools are on, because they call no provider.
 
 Approving or rejecting a review entry is reserved for a person. The dashboard's
 `review.approve` and `review.reject` methods are never registered as tools, on
-purpose: an agent cannot sign off its own work.
+purpose: an agent cannot sign off its own work. When a person rejects a value, it
+is removed from the locale file; an `xliff` project refuses that with
+`REVIEW_REJECT_UNSUPPORTED`, since a unit without a target reads as its source,
+while every other format, `arb` included, allows it.
 
 Registered is not the same as usable. `verbatra_glossary_write` needs a
 file-backed glossary: on a project whose glossary is inline in the config, or
@@ -99,7 +107,7 @@ the glossary comes from, so read that before you try to write a term.
 | `verbatra_glossary_write` | `glossary.write` | always | Change one term: `translation`, per-`locale` translation and `forbidden`, `note`, `partOfSpeech`, `caseSensitive`, or `doNotTranslate`. `null` clears a field. Calls no provider. |
 | `verbatra_lock_state` | `lock.state` | always | Read the lock baseline and the per-locale counts it implies. |
 | `verbatra_history_list` | `history.list` | always | Recent git commits touching the source or a target locale file. Reports itself unavailable outside a git repository. |
-| `verbatra_key_integrity` | `key.integrity` | always | Whether one key's value keeps the source placeholders and stays valid ICU, per locale. |
+| `verbatra_key_integrity` | `key.integrity` | always | Whether one key's value keeps the source placeholders and inline markup, stays valid ICU, and has ICU plural, ordinal and select arms that fit the target language, per locale. Optional `locales`. |
 | `verbatra_review_queue` | `review.queue` | always | The entries the last recorded run flagged for human review, with reason codes. |
 | `verbatra_usage_summary` | `usage.summary` | always | Token usage and budget figures recorded by the last run. |
 | `verbatra_key_value` | `key.value` | always | Source and target text for exactly one key in one locale. |
@@ -156,7 +164,20 @@ over the stdio MCP server. Do not reference them when working against that serve
   `KEY_PROTECTED` or `KEY_PINNED`, and `verbatra_translation_editEntry` refuses a
   pinned key with `KEY_PINNED`. Report them rather than editing around them.
 - `verbatra_key_integrity` lists a locale only while the key counts as changed
-  there. Absence is not a pass and not a failure.
+  there. Absence is not a pass and not a failure. Each listed locale carries
+  `hasPlaceholders`, `matches`, the `missing` and `extra` placeholders, `icuValid`,
+  `icuArmsMatch` with one short problem per wrong arm in `icuArmDetails`, and
+  `markupMatches` with `markupDetails`, never the full source or target text. Unlike
+  the stdio server's `key.integrity`, the fields sit on the locale itself, with no
+  `entries` list.
+- `verbatra_translation_translatePending` reports each key the integrity gate
+  refused under its locale's `integrityRefusals` (`key`, a `reason` of
+  `placeholder`, `markup`, `icu`, `degenerate` or `empty`, and `details` when one
+  part is at fault). The previous value stayed. A locale whose state was recorded
+  under an old spelling of its code is moved over first
+  (`LOCALE_STATE_CARRIED_OVER`), or, when that move could not happen, reports
+  `LOCALE_STATE_CARRY_OVER_SKIPPED` and may fail with
+  `LOCALE_STATE_NOT_CARRIED_OVER` without running.
 - `verbatra_lock_state` compares against the recorded lock baseline;
   `verbatra_status_check` compares the locale files themselves. A key with no lock
   baseline can never be reported stale, which is why a project without a committed
@@ -171,7 +192,9 @@ over the stdio MCP server. Do not reference them when working against that serve
   list. `null` clears `translation`, `forbidden`, `note` or `partOfSpeech`; clearing
   the shared translation keeps the term's per-locale data, and the term disappears
   only once nothing is left. `doNotTranslate` combines with no parameter but
-  `caseSensitive`. It never retranslates existing keys.
+  `caseSensitive`. It never retranslates existing keys. A glossary file or write
+  lock that cannot be written fails with `GLOSSARY_UNWRITABLE`, and another writer
+  holding the glossary lock past its timeout with `LOCK_CONTENDED`.
 - Each term of `verbatra_glossary_get` carries `byLocale`: the translation and
   forbidden renderings each target locale is held to, and whether that translation
   is `inherited` from the base language or the shared one. Check a translation
