@@ -67,6 +67,9 @@ bills per key sent, so the cheap read-only question comes first.
   `warnings`, `invalidSourceKeys`) and each locale's findings in
   `result.locales[].qa`. An integrity error exits `1`; a review warning exits `1`
   only under `--strict`, and `--severity error` drops the warnings from the report.
+  `--severity` or `--strict` without `--qa`, and `--strict` with `--severity error`,
+  fail with `INVALID_QA_OPTION`; a severity other than `error` or `warning` fails
+  with `INVALID_SEVERITY`.
 - `verbatra translate --dry-run --json` produces the full run summary a real run
   would produce. A dry run constructs no provider object at all, so it reads no
   key, opens no connection, and writes nothing. It is safe on a machine that has
@@ -106,13 +109,25 @@ Read this table before running anything unattended.
 holds them to the same integrity gate as provider output, at no provider cost.
 When a human has already done the work, `export` then `import` is the free path.
 
+A human-readable `import` or `translate` summary counts each locale's outcome
+(`1 notice` / `2 notices`, `malformed-row(s)`, `duplicate-key(s)`,
+`integrity-withheld`, and so on) and lists every key the integrity gate withheld
+under `integrity-withheld:` as `key: reason (details)`, the reason being
+`placeholder`, `markup`, `icu`, `degenerate` or `empty`. The same refusals are in
+`--json` as `result.locales[].integrityRefusals` (`key`, `reason`, `details`).
+Parse the JSON, never these lines.
+
 `tmx` is the other free path. `verbatra tmx import <file>` lands a translation
 memory another tool produced into this project's memory, so a later run reuses
 it instead of paying for those strings again, and `verbatra tmx export` writes
 this project's memory out in the same standard format. Everything in an imported
 file faces the same integrity gate provider output does, and a translation the
 project already holds wins a disagreement unless `--overwrite` is passed. Neither
-direction calls a provider or reads a key.
+direction calls a provider or reads a key. An import reports per locale how many
+units were `added`, `unchanged`, `kept`, `overwritten` and repeated, counts what
+the gate `rejected` by reason, and lists each refused unit as
+`unit N: reason (details)` (in `--json`, `result.locales[].refusals` with `unit`,
+`reason` and `details`), `N` being the unit's position in the file.
 
 Three commands read application source through the config's `extract` block, and
 none of them calls a provider: `extract` adds keys found at translation call
@@ -161,9 +176,9 @@ exactly as it is.
 
 `verbatra.provenance.json` sits next to the lock file and records, per key, who
 wrote the value that is in the locale file now: `machine`, `memory`, `fuzzy`,
-`agent`, `human` or `import`, and, derived when the files are read, `unrecorded`
-(no record yet) or `external` (changed outside verbatra since). Commit it with the
-lock file.
+`agent`, `human`, `import` or `unknown` (recorded without a known author), and,
+derived when the files are read, `unrecorded` (no record yet) or `external`
+(changed outside verbatra since). Commit it with the lock file.
 
 A stale key whose value a person wrote, imported or changed outside verbatra is
 **protected**. The config's `humanEdits` decides what a run does with it:
@@ -192,7 +207,8 @@ run" with "did the work land".
 | `1` | It ran, the result is not clean: a locale failed or is partial, `check` found drift or, with `--qa`, an integrity error (a review warning too under `--strict`), `diff` found pending keys or, with `--unused`, a complete scan found unused source keys, `doctor` found a failed check or, with `--literals`, an untranslated literal or an unreadable source file, `types --check` found the committed declaration out of date. |
 | `2` | It could not run: bad config, unreadable source, corrupt lock file, a network policy that refuses the provider's host, or a usage error such as an unknown `--locales` value. `init` also exits `2` when a flag it needs is missing, when several formats or file patterns fit, or when it refuses to replace an existing config. |
 | `3` | `translate` in a human-only project (provider `none`) finished cleanly but left keys that need a human translation. |
-| `130` | `watch`, `studio` or `mcp` was force-stopped by a second interrupt. All three return the same stoppable session. |
+| `130` | `watch`, `studio` or `mcp` was force-stopped by a second interrupt (all three return the same stoppable session), or `translate` or `import` was interrupted with SIGINT. |
+| `143` | `translate` or `import` was stopped with SIGTERM. |
 
 Two things that catch scripts out:
 
@@ -206,6 +222,20 @@ Two things that catch scripts out:
 - Exit `3` is not a failure and not success either: nothing broke, and the keys in
   `result.locales[].unfilled` (plus any protected keys) are waiting for a person.
   Hand them off with `export`; retrying `translate` changes nothing.
+
+An interrupted `translate` or `import` deletes the write locks it holds before it
+exits, so the next run does not wait on them. A lock left behind by a process that
+was killed outright is reclaimed automatically by the next run on the same machine
+once that process is gone; one left by another machine or an older verbatra is
+not, and the locale fails with `LOCK_CONTENDED` naming the lock file under
+`.verbatra-local/locks/`. While a run waits for a lock another process holds, it
+says so on stderr once the wait passes a second (a `{"type":"lock-wait"}` record
+under `--json`); delete the named file only when no verbatra process is running.
+`--lock-timeout <seconds>` (default 600, at most 3600) on `translate` and `watch`
+bounds only the waits before any provider call: the locale write lock and the
+lock-file guard for a respelled locale's state. The guard taken to record a file
+the run already wrote always allows the ten-minute default, so a written file is
+never left unrecorded.
 
 Do not run a verbatra gate under `set -e`: a non-zero exit is the answer you asked
 for, not a crash.
@@ -231,7 +261,8 @@ type Envelope<TResult> =
 
 `version` is the envelope's shape version, not the package version. New fields can
 appear without a bump, so ignore fields you do not recognize. On an `ok: false`
-record, branch on `code`, never on `message`. `candidates` lists the values that
+record, branch on `code`, never on `message`. A command line commander itself
+rejects, such as an unknown flag, carries `USAGE_ERROR`. `candidates` lists the values that
 would have been accepted and `missing` the flags that still have to be passed, so
 an agent can retry with a flag instead of parsing prose. Progress records and the
 human-readable error line always go to stderr, so stdout is a clean stream of
@@ -242,6 +273,44 @@ life of the process. A failed run is a record on that stream. It does not stop t
 watcher and does not change the exit code, so treat it as an event to report, not
 a reason to restart the process.
 
+## Error and notice codes
+
+A whole-command failure exits `2` with one of these as `code`. The same codes, and
+a provider's own error codes, appear on a failed locale as
+`result.locales[].error.code`, where the run went on with the other locales and
+exits `1`.
+
+| Code | What it means for you |
+| --- | --- |
+| `CONFIG_NOT_FOUND`, `CONFIG_INVALID` | No config, or one that does not validate (including a strict `provider` block, a glossary file, or an invalid network variable). Fix the config; nothing ran. |
+| `UNKNOWN_FORMAT`, `UNKNOWN_LOCALE`, `UNKNOWN_KEY` | A format, locale or key that is not configured or not in the source. Take the values from the config. |
+| `SOURCE_UNREADABLE`, `SOURCE_INVALID`, `SOURCE_UNWRITABLE` | The source locale file (or an import file) is missing, unparseable, or, for `extract`, unwritable. |
+| `LOCK_FILE_INVALID`, `PROVENANCE_FILE_INVALID`, `PROVENANCE_FILE_UNWRITABLE` | `verbatra.lock.json` or `verbatra.provenance.json` is corrupt, too large or from a newer verbatra. Restore it from version control; never delete it to get past this. |
+| `LOCK_CONTENDED` | Another process holds a write lock past the timeout, or a lock was left by another machine or an older verbatra. See the lock paragraph under Exit codes. |
+| `LOCALE_STATE_NOT_CARRIED_OVER` | Never thrown; a locale whose respelled state could not be moved did not run. Re-run once the other process is done. |
+| `KEY_PROTECTED`, `KEY_PINNED` | A single-key machine write refused a person's value or a `pinnedKeys` key. Leave it for a person. |
+| `MACHINE_TRANSLATION_DISABLED` | Provider `none`: a provider-spending action was refused before any key was read. |
+| `PROVIDER_CONSTRUCTION_FAILED` | The provider could not be built, most often because its key variable is not set. Name the variable; never ask for the value. |
+| `NETWORK_POLICY_VIOLATION` | The network policy refuses the provider's host. Report it; do not loosen the policy yourself. |
+| `GLOSSARY_NOT_FILE_BACKED`, `GLOSSARY_UNWRITABLE` | The glossary is inline or absent, or its file or lock could not be written. |
+| `CONCURRENCY_INVALID`, `CONCURRENCY_BUDGET_CONFLICT`, `MAX_TOKENS_INVALID` | Bad `--concurrency` or `--max-tokens`, or a concurrency above `1` together with a token budget. |
+| `LOCALE_LAYOUT_INVALID`, `LOCALE_PATH_COLLISION` | `files.pattern` and `files.localeStyle` do not fit, or two locales map to one file. |
+| `TARGET_UNWRITABLE`, `TYPES_UNWRITABLE`, `TMX_UNWRITABLE`, `EXPORT_UNWRITABLE` | The file the command writes could not be written. |
+| `PSEUDO_OUTPUT_CONFLICT`, `TYPES_OUTPUT_CONFLICT`, `TMX_OUTPUT_CONFLICT`, `EXPORT_OUTPUT_CONFLICT` | The output path would overwrite a locale, lock, provenance, cache, config or glossary file, or leaves the working directory. Pick another path. |
+| `EXTRACT_NOT_CONFIGURED`, `EXTRACT_FS_UNSUPPORTED` | `extract` needs an `extract` block in the config. |
+| `REVIEW_VALUE_CHANGED`, `REVIEW_SOURCE_CHANGED`, `REVIEW_REJECT_UNSUPPORTED`, `REVIEW_RESTORE_FAILED`, `REVIEWER_INVALID` | Review decisions, which only a person makes. `xliff` cannot reject a value, since a unit without a target reads as its source; every other format, `arb` included, can. |
+| `LOCALE_FAILED`, `CLI_ERROR` | Fallbacks for a failed locale, or a command failure, that carried no code of its own. |
+| `USAGE_ERROR`, `INVALID_LOCALES`, `INVALID_LOCALE`, `INVALID_OUT`, `INVALID_FORMAT`, `INVALID_DIRECTION`, `INVALID_QA_OPTION`, `INVALID_SEVERITY`, `INVALID_CONCURRENCY`, `INVALID_MAX_TOKENS`, `INVALID_LOCK_TIMEOUT`, `INVALID_DEBOUNCE`, `INVALID_PORT` | A flag value the CLI refused before anything ran. |
+
+A run that completed can still carry notices, each in
+`result.locales[].notices` with a `code`: `PLURAL_CATEGORIES_INCOMPLETE`,
+`SUB_BATCH_FAILED`, `BLANK_ROW_BASELINE_RETAINED`, `BUDGET_TOKENS_EXCEEDED`,
+`CACHE_VERSION_UNRECOGNIZED`, `PROVENANCE_VERSION_UNRECOGNIZED`,
+`PROVENANCE_FILE_TOO_LARGE`, `LOCALE_STATE_CARRIED_OVER` and
+`LOCALE_STATE_CARRY_OVER_SKIPPED`, plus the codes a provider raises. A notice is
+something to report, not a failure; the exit code already says whether the run was
+clean.
+
 ## Formats
 
 `format` in the config is one of these fourteen. The built-in set is closed; the
@@ -250,22 +319,22 @@ adapter shipped outside verbatra. The CLI loads no plugin, so a `custom:` format
 only runs through `@verbatra/sdk`, where the project's own code registers the
 adapter.
 
-| Format id | What it claims |
-| --- | --- |
-| `i18next-json` | i18next nested JSON, including its plural key suffixes |
-| `vue-i18n-json` | Vue I18n JSON, including its pipe-separated plural values |
-| `next-intl-json` | next-intl ICU-message JSON |
-| `ngx-translate-json` | ngx-translate nested JSON |
-| `xliff` | XLIFF interchange XML; target files must already exist |
-| `yaml` | Plain nested YAML |
-| `arb` | Flutter Application Resource Bundle |
-| `properties` | Java and Spring `.properties` |
-| `apple-strings` | Apple flat `.strings` for iOS and macOS |
-| `apple-xcstrings` | Xcode String Catalog; every locale lives in one file |
-| `android-xml` | Android `res/values*/strings.xml`; set `files.localeStyle` to `android` |
-| `gettext-po` | GNU gettext `.po` and `.pot`, including `msgctxt` and plural forms |
-| `ini` | Classic INI; a key under `[section]` is addressed as `section.key` |
-| `resx` | .NET XML resources; typed and designer entries are preserved untouched |
+| Format id | What it claims | `init` default path |
+| --- | --- | --- |
+| `i18next-json` | i18next nested JSON, including its plural key suffixes | `locales/{locale}.json` |
+| `vue-i18n-json` | Vue I18n JSON, including its pipe-separated plural values | `src/locales/{locale}.json` |
+| `next-intl-json` | next-intl ICU-message JSON | `messages/{locale}.json` |
+| `ngx-translate-json` | ngx-translate nested JSON | `src/assets/i18n/{locale}.json` |
+| `xliff` | XLIFF interchange XML; target files must already exist | `locales/{locale}.xlf` |
+| `yaml` | Plain nested YAML | `locales/{locale}.yml` |
+| `arb` | Flutter Application Resource Bundle | `lib/l10n/app_{locale}.arb`, `posix` style |
+| `properties` | Java and Spring `.properties` | `src/main/resources/messages_{locale}.properties`, `posix` style |
+| `apple-strings` | Apple flat `.strings` for iOS and macOS | `{locale}.lproj/Localizable.strings` |
+| `apple-xcstrings` | Xcode String Catalog; every locale lives in one file | `{locale}Localizable.xcstrings` |
+| `android-xml` | Android `res/values*/strings.xml`; set `files.localeStyle` to `android` | `app/src/main/res/{locale}/strings.xml`, `android` style |
+| `gettext-po` | GNU gettext `.po` and `.pot`, including `msgctxt` and plural forms | `locales/{locale}/LC_MESSAGES/messages.po`, `posix` style |
+| `ini` | Classic INI; a key under `[section]` is addressed as `section.key` | `locales/{locale}.ini` |
+| `resx` | .NET XML resources; typed and designer entries are preserved untouched | `Resources/Strings.{locale}.resx` |
 
 Plain JSON with no matching library: pick by placeholder syntax. `{{name}}` means
 `i18next-json`, single-brace `{name}` means `vue-i18n-json`.
@@ -282,6 +351,15 @@ optionally `--api-key-env-var`, which names a variable and never holds a key. Ad
 record names the files it wrote, the resolved config, where each value came from
 (`sources`), what was detected with its `confidence`, and `nextSteps`.
 
+What neither a flag nor detection decides falls back to a default: format
+`i18next-json`, source `en`, targets `de`, and the path (with its
+`files.localeStyle`) in the format's row of the Formats table. The source has no
+default when a file holds strings under no locale name, such as
+`messages.properties` beside `messages_de.properties` or a gettext `.pot`: pass
+`--source`, and follow the `nextSteps` entry about that file, since verbatra reads
+the source only from the path its pattern names for the source locale. A
+defaulted format is named in `nextSteps` too, since nothing backed it.
+
 Branch on the failure `code`, all of them exit `2`:
 
 | Code | What to do |
@@ -290,7 +368,7 @@ Branch on the failure `code`, all of them exit `2`:
 | `INVALID_PROVIDER`, `INVALID_FORMAT` | Pass one of the values listed in `candidates`. |
 | `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible`. |
 | `FORMAT_AMBIGUOUS`, `LAYOUT_AMBIGUOUS` | Several fit; ask the human which of `candidates` is right and pass `--format` or `--path`. |
-| `CONFIG_EXISTS` | A different config is already there. Never add `--force` unless the human asked to replace it. |
+| `CONFIG_EXISTS` | A different `verbatra.config.ts` is already there; never add `--force` unless the human asked to replace it. Another config file verbatra would read first (or a `verbatra` key in `package.json`) is refused even with `--force`. |
 | `CONFIG_INVALID` | The answers do not form a valid config; the message says which field. |
 
 Re-running `init` with the same answers is safe: an identical
@@ -320,27 +398,64 @@ keys from the translation memory alone and report every other key as `unfilled`,
 and a single-key retranslation fails with `MACHINE_TRANSLATION_DISABLED`. Do not
 read it as a broken setup, and do not switch it to a paying provider on your own.
 
+The `provider` block is validated strictly: a key beside `id` and `options`, or an
+option that belongs to another provider, fails the config with `CONFIG_INVALID`
+rather than being ignored. Fix the field the message names; do not delete options
+you do not understand. The CLI also reads `.env.local` and then `.env` from the
+working directory, filling only variables the environment does not already set.
+
 The config's `network` block (`policy` of `any`, `local-only` or `allowlist`, plus
-`allowedHosts`) and the `VERBATRA_NETWORK_POLICY` environment variable limit where
-a provider may connect; when both are set, a host must satisfy each. A refused host
+`allowedHosts`) and the `VERBATRA_NETWORK_POLICY` and
+`VERBATRA_NETWORK_ALLOWED_HOSTS` environment variables limit where a provider may
+connect; when both are set, a host must satisfy each, and an invalid environment
+value fails with `CONFIG_INVALID` instead of allowing every host. A refused host
 fails a real run with `NETWORK_POLICY_VIOLATION` before any key is read or request
 sent. `doctor` reports the effective policy in its `network-policy` check.
 
 ## doctor
 
 `verbatra doctor --json` returns `result.ok` and one entry per check in
-`result.checks`, each with an `id` and a `status` of `pass`, `fail` or `skipped`:
-`config`, `format-adapter`, `provider`, `api-key`, `network-policy`, `source-file`,
-`plural-rules` and `locale-codes`. The last two are informational and never fail;
-the others are skipped when `config` itself failed. With `--literals` the run has
-exactly two checks, `config` and `untranslated-literals`. Branch on `id`, never on
-`title` or `detail`.
+`result.checks`, each with an `id` and a `status` of `pass`, `fail` or `skipped`,
+always these nine in this order:
+
+| Check id | What it answers |
+| --- | --- |
+| `config` | The config loads and validates. |
+| `format-adapter` | The configured format resolves to an adapter. |
+| `provider` | The provider id resolves; provider `none` passes as machine translation disabled by policy. |
+| `api-key` | The provider's key variable is set, by name only; `none` passes without looking. |
+| `network-policy` | The effective network policy permits the provider's host. |
+| `source-file` | The source locale file exists and parses. |
+| `plural-rules` | Informational: the ICU and CLDR versions plural categories come from, and any target locale ICU has no rules for. |
+| `locale-codes` | Informational: configured codes that are valid but not canonical BCP 47, with the canonical spelling. Nothing is renamed. |
+| `locale-state` | Informational: locales the lock file, translation memory or provenance file hold state for that the config does not list, and what the next `translate` does about them. |
+
+The informational checks never fail. Every check but `config` reports `skipped`
+when `config` itself failed. With `--literals` the run has exactly two checks,
+`config` and `untranslated-literals`. Branch on `id`, never on `title` or
+`detail`.
+
+## Respelled locale codes
+
+When a configured code is respelled, such as `pt_BR` to `pt-BR`, the lock file,
+translation memory and provenance file may still hold that locale's state under
+the old spelling. `translate` and `watch` move it to the configured code once,
+before the locale runs, and never overwrite state the new code already has; the
+locale reports the notice `LOCALE_STATE_CARRIED_OVER` (a dry run reports what it
+would move and moves nothing). If the move cannot happen, because another process
+holds the lock-file guard past the lock timeout or a file cannot be written, the
+locale reports `LOCALE_STATE_CARRY_OVER_SKIPPED`. When the lock file or the
+provenance file is among those left behind, the locale does not run at all: it
+fails with `LOCALE_STATE_NOT_CARRIED_OVER`, so its protection and rejection records
+are not lost, and the next run tries again. When only the translation memory stayed
+behind, the locale runs without those cached translations. `doctor`'s
+`locale-state` check shows what is waiting to move.
 
 ## A safe unattended shape
 
 1. `verbatra doctor` first. It is the cheapest preflight: it validates the config,
-   the format, the provider id, the key variable name and the source file, with no
-   network call and no key read.
+   the format, the provider id, the key variable name, the network policy and the
+   source file, with no network call and no key read.
 2. `verbatra diff --json` to learn the exact pending keys. Exit `0` means stop
    here, there is nothing to do and nothing to spend.
 3. `verbatra translate --estimate --json` for what the run would send and cost.
@@ -349,7 +464,8 @@ exactly two checks, `config` and `untranslated-literals`. Branch on `id`, never 
 5. Only after an explicit yes: `verbatra translate --json`, with
    `--max-tokens <n>` when the human agreed to a ceiling.
 6. Report from `result.succeeded`, `result.partial` and `result.failed`, and name
-   what `protected`, `unfilled` and `budgetWithheld` left behind. Report what
+   what `protected`, `unfilled`, `budgetWithheld` and `integrityRefusals` left
+   behind. Report what
    landed, not what you asked for.
 
 Commit `verbatra.config.ts`, `.env.example`, `verbatra.lock.json`,
