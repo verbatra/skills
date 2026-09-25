@@ -27,14 +27,15 @@ Code sets for a server it starts, and over its own working directory otherwise.
 
 Stdout carries nothing but MCP protocol messages. On stderr the server prints
 `verbatra MCP server running on stdio (project <dir>, spend tools on|off)` once it
-is ready, and `verbatra MCP server stopped (client closed stdin)` or
+is ready (`spend tools off (provider none)` when spend was granted but the provider
+is `none`), and `verbatra MCP server stopped (client closed stdin)` or
 `(interrupted)` when it ends; `verbatra mcp --quiet` leaves both out. An interrupt
 stops either binary within a few seconds, even while a tool call waits on the
 provider, and releases any locale lock it holds; a second interrupt force-stops it
 with exit code `130` (`143` after SIGTERM for `verbatra-mcp`). Started by
 hand with a terminal on stdin, it adds how to add it to a client, how to inspect
-it, and how to stop it. The ready line's `spend tools` says whether spend was
-granted, not whether the spend tools are listed: provider `none` still hides them.
+it, and how to stop it. `verbatra mcp --json` is refused with exit `2` and a
+`USAGE_ERROR` on stderr, since stdout belongs to the protocol.
 
 ## Non-negotiable rules
 
@@ -106,16 +107,22 @@ when the operator granted spend.
 | `status.check` | always | Per target locale, how many keys are missing, stale or up to date, how many of them are `protected`, and who wrote the current values (`provenance`). Optional `locales`. |
 | `status.diff` | always | Per target locale, the exact keys the next run would add, re-translate or orphan, the `protected` ones it would leave for a person, and `changedOrigins`. Optional `locales`. |
 | `glossary.get` | always | Read every term (shared `target`, per-locale `targets`, `forbidden` renderings, note, part of speech), the `doNotTranslate` terms, the format `version` and where the glossary comes from. Optional `locale` adds `effective`, the terms a translation into that locale is held to. |
-| `glossary.write` | always | Change one term: `translation`, per-`locale` translation and `forbidden` renderings, `note`, `partOfSpeech`, `caseSensitive`, or `doNotTranslate`. `null` clears a field. |
+| `glossary.write` | always | Change one term: `translation`, per-`locale` translation and `forbidden` renderings, `note`, `partOfSpeech`, `caseSensitive`, or `doNotTranslate`. `null` clears a field. Optional `lockTimeoutMs`. |
 | `lock.state` | always | Read the lock file version and the per-locale counts it implies. Reports `exists: false` before the first successful run. |
-| `key.integrity` | always | Report one key's placeholder, inline markup, ICU syntax and ICU plural, ordinal and select arm drift against the lock baseline, per target locale. Optional `locales`. |
+| `key.integrity` | always | Report one key's placeholder, inline markup, ICU syntax and ICU plural, ordinal and select arm drift against the lock baseline, per target locale. Optional `locales`. A key the source lacks fails with `UNKNOWN_KEY`. |
 | `key.value` | always | Read one key's current source text, its current text in one target locale, the translator `description` the source file gives the key, and who wrote it (`provenance`). |
-| `translation.editEntry` | always | Write a manual translation for one key in one locale, recorded with origin `agent`. No provider call. |
+| `translation.editEntry` | always | Write a manual translation for one key in one locale, recorded with origin `agent`. No provider call. Optional `lockTimeoutMs`. |
 | `translation.estimate` | always | Price what `translation.translatePending` would send: a dry-run summary whose `estimate` carries keys, requests, tokens or characters per locale and in total, a `cost` when the config's rates cover the provider (`pricing` says why not), and `caveats`. No provider call, no key read. Optional `locales`. |
-| `translation.retranslateEntry` | spend gated | Ask the provider for a fresh translation of one key in one locale. |
-| `translation.translatePending` | spend gated | Translate every missing or stale key in one run. Optional `locales` and a `maxTokens` ceiling. |
+| `translation.retranslateEntry` | spend gated | Ask the provider for a fresh translation of one key in one locale. Optional `lockTimeoutMs`. |
+| `translation.translatePending` | spend gated | Translate every missing or stale key in one run. Optional `locales`, a `maxTokens` ceiling, and `lockTimeoutMs`. |
 | `review.queue` | always | Read the keys the last run flagged for human review and a person has not decided yet, with the reason for each. |
 | `usage.summary` | always | Read the token usage and budget outcome left behind by the last run. |
+
+`lockTimeoutMs` (0 to 600000, default 30000) bounds how long a writing tool waits
+for a write lock another process holds; past it the call fails with
+`LOCK_CONTENDED` and writes nothing (for `translation.translatePending`, only that
+locale fails). A failed call's text always starts with its code, such as
+`UNKNOWN_KEY: ...` or `RATE_LIMITED: ...`: branch on that prefix.
 
 ## How to work
 

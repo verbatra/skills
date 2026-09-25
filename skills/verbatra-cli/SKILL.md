@@ -224,7 +224,9 @@ Two things that catch scripts out:
   Hand them off with `export`; retrying `translate` changes nothing.
 
 An interrupted `translate` or `import` deletes the write locks it holds before it
-exits, so the next run does not wait on them. A lock left behind by a process that
+exits, so the next run does not wait on them, and ends stderr with
+`verbatra: interrupted (SIGINT), released locks` (under `--json`, the record
+`{"type":"interrupted","signal":"SIGINT","locksReleased":true}`). A lock left behind by a process that
 was killed outright is reclaimed automatically by the next run on the same machine
 once that process is gone; one left by another machine or an older verbatra is
 not, and the locale fails with `LOCK_CONTENDED` naming the lock file under
@@ -427,9 +429,10 @@ Branch on the failure `code`, all of them exit `2`:
 | --- | --- |
 | `MISSING_OPTIONS` | Pass the flags listed in `missing`, or `--yes` to take the defaults. `--yes` cannot fill a flag without a default: `openai-compatible` still needs `--base-url` and `--model`. |
 | `INVALID_PROVIDER`, `INVALID_FORMAT` | Pass one of the values listed in `candidates`. |
-| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible`. |
+| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible`, or `--cwd` names no existing directory. |
+| `INIT_UNWRITABLE` | `init` could not write a file into its directory, for example a read-only one. The message names the file, the file-system code and any file already written; tell the human rather than retrying. |
 | `FORMAT_AMBIGUOUS`, `LAYOUT_AMBIGUOUS` | Several fit; ask the human which of `candidates` is right and pass `--format` or `--path`. |
-| `CONFIG_EXISTS` | A different `verbatra.config.ts` is already there; never add `--force` unless the human asked to replace it. Another config file verbatra would read first (or a `verbatra` key in `package.json`) is refused even with `--force`. |
+| `CONFIG_EXISTS` | A `verbatra.config.ts` is already there (reported before any missing or ambiguous answer); an identical one passes as `unchanged`, a different one is refused; never add `--force` unless the human asked to replace it. Another config file verbatra would read first (or a `verbatra` key in `package.json`) is refused even with `--force`. |
 | `CONFIG_INVALID` | The answers do not form a valid config; the message says which field. |
 
 Re-running `init` with the same answers is safe: an identical
