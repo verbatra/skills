@@ -91,7 +91,7 @@ Read this table before running anything unattended.
 | Command | Provider spend | Writes files | Needs a key |
 | --- | --- | --- | --- |
 | `translate` | yes, unless `--dry-run`, `--estimate` or provider `none` | yes | yes, for a real run with a provider |
-| `watch` | yes, once per source change | yes | yes |
+| `watch` | yes, once per source change, unless provider `none` | yes | yes, unless provider `none` |
 | `export` | no | yes, the translator handoff workbook | no |
 | `import` | no | yes, target locales and the lock file | no |
 | `tmx` | no | yes on import, the translation memory; yes on export, the TMX file | no |
@@ -101,7 +101,7 @@ Read this table before running anything unattended.
 | `types` | no | yes, the generated declaration, unless `--check` | no |
 | `doctor` | no | no | no, it never reads a key value; `--literals` does not even check for one |
 | `studio` | only with `--allow-spend` or `VERBATRA_STUDIO_ALLOW_SPEND` | yes, through in-place edits | only when spend is granted |
-| `mcp` | only with `--allow-spend` or `VERBATRA_MCP_ALLOW_SPEND` | yes, through in-place edits | only when spend is granted |
+| `mcp` | only with `--allow-spend` or `VERBATRA_MCP_ALLOW_SPEND` (also read from `.env.local` and `.env`) | yes, through in-place edits | only when spend is granted |
 | `init` | no | yes, the config, the env example unless the provider is `none`, and `.gitignore` | no |
 | `extract` | no | yes, the source locale, unless `--dry-run` | no |
 
@@ -258,6 +258,7 @@ type Envelope<TResult> =
       command: string | null;
       code: string;
       message: string;
+      causeCode?: string;
       candidates?: string[];
       missing?: string[];
     };
@@ -268,7 +269,9 @@ appear without a bump, so ignore fields you do not recognize. On an `ok: false`
 record, branch on `code`, never on `message`. A command line commander itself
 rejects, such as an unknown flag, carries `USAGE_ERROR`. `candidates` lists the values that
 would have been accepted and `missing` the flags that still have to be passed, so
-an agent can retry with a flag instead of parsing prose. Progress records and the
+an agent can retry with a flag instead of parsing prose. `causeCode` names the
+coded error a failure wraps, such as `MISSING_API_KEY` under
+`PROVIDER_CONSTRUCTION_FAILED`, and the stderr line ends with `(cause: <code>)`. Progress records and the
 human-readable error line always go to stderr, so stdout is a clean stream of
 envelopes.
 
@@ -305,7 +308,8 @@ What a human-readable run prints:
   `[warn] finished in ..., see the summary above` when the exit code is not `0`.
 - `next:` hints with the command to run after it, such as `verbatra check` after a
   successful translate. A hint repeats the `--cwd` and `--config` the command was
-  given, so it can be run as printed.
+  given, and the `--format` of a `csv` or `tsv` export or import, so it can be run
+  as printed.
 - A dry run counts keys as `would translate` (`would import` for `import`) and
   `would prune`, never as translated.
 - File paths inside the working directory print relative to it; paths outside it
@@ -341,7 +345,7 @@ exits `1`.
 | `LOCALE_STATE_NOT_CARRIED_OVER` | Never thrown; a locale whose respelled state could not be moved did not run. Re-run once the other process is done. |
 | `KEY_PROTECTED`, `KEY_PINNED` | A single-key machine write refused a person's value or a `pinnedKeys` key. Leave it for a person. |
 | `MACHINE_TRANSLATION_DISABLED` | Provider `none`: a provider-spending action was refused before any key was read. |
-| `PROVIDER_CONSTRUCTION_FAILED` | The provider could not be built, most often because its key variable is not set. Name the variable; never ask for the value. |
+| `PROVIDER_CONSTRUCTION_FAILED` | The provider could not be built, most often because its key variable is not set (`causeCode` `MISSING_API_KEY`). Name the variable; never ask for the value. |
 | `NETWORK_POLICY_VIOLATION` | The network policy refuses the provider's host. Report it; do not loosen the policy yourself. |
 | `GLOSSARY_NOT_FILE_BACKED`, `GLOSSARY_UNWRITABLE` | The glossary is inline or absent, or its file or lock could not be written. |
 | `CONCURRENCY_INVALID`, `CONCURRENCY_BUDGET_CONFLICT`, `MAX_TOKENS_INVALID` | Bad `--concurrency` or `--max-tokens`, or a concurrency above `1` together with a token budget. |
@@ -421,7 +425,7 @@ Branch on the failure `code`, all of them exit `2`:
 
 | Code | What to do |
 | --- | --- |
-| `MISSING_OPTIONS` | Pass the flags listed in `missing`, or `--yes` to take the defaults. |
+| `MISSING_OPTIONS` | Pass the flags listed in `missing`, or `--yes` to take the defaults. `--yes` cannot fill a flag without a default: `openai-compatible` still needs `--base-url` and `--model`. |
 | `INVALID_PROVIDER`, `INVALID_FORMAT` | Pass one of the values listed in `candidates`. |
 | `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible`. |
 | `FORMAT_AMBIGUOUS`, `LAYOUT_AMBIGUOUS` | Several fit; ask the human which of `candidates` is right and pass `--format` or `--path`. |
@@ -506,7 +510,9 @@ provenance file is among those left behind, the locale does not run at all: it
 fails with `LOCALE_STATE_NOT_CARRIED_OVER`, so its protection and rejection records
 are not lost, and the next run tries again. When only the translation memory stayed
 behind, the locale runs without those cached translations. `doctor`'s
-`locale-state` check shows what is waiting to move.
+`locale-state` check shows what is waiting to move. `check` and `diff` read the
+old spelling's state as the configured code without moving anything, so a CI gate
+reports its stale keys and exits `1` before the next `translate`.
 
 ## A safe unattended shape
 
