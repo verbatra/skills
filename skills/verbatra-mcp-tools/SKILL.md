@@ -1,6 +1,6 @@
 ---
 name: verbatra-mcp-tools
-description: Operate a verbatra i18n project through the verbatra stdio MCP server, the one a verbatra mcp process serves over stdio. Use when an MCP client is connected to a verbatra server and translation status has to be read, a key is missing or stale in a target locale, a translation has to be corrected or re-run, a glossary term has to be added, or the review queue and token usage of the last run have to be reported. Also use when a provider-spending tool appears to be absent from the tool list. Covers every registered tool, the spend boundary that keeps some of them off the default list, and what each result means.
+description: Operate a verbatra i18n project through the verbatra stdio MCP server, the one a verbatra mcp process serves over stdio. Use when an MCP client is connected to a verbatra server and translation status has to be read, a key is missing or stale in a target locale, a translation has to be corrected or re-run, a glossary term has to be added, the review queue and token usage of the last run have to be reported, or what a pending run would cost has to be estimated with translation.estimate before any spend. Also use when a provider-spending tool appears to be absent from the tool list. Covers every registered tool, the spend boundary that keeps some of them off the default list, and what each result means.
 license: MIT
 metadata:
   source: 'https://github.com/verbatra/skills'
@@ -28,7 +28,10 @@ Code sets for a server it starts, and over its own working directory otherwise.
 Stdout carries nothing but MCP protocol messages. On stderr the server prints
 `verbatra MCP server running on stdio (project <dir>, spend tools on|off)` once it
 is ready, and `verbatra MCP server stopped (client closed stdin)` or
-`(interrupted)` when it ends; `verbatra mcp --quiet` leaves both out. Started by
+`(interrupted)` when it ends; `verbatra mcp --quiet` leaves both out. An interrupt
+stops either binary within a few seconds, even while a tool call waits on the
+provider, and releases any locale lock it holds; a second interrupt force-stops it
+with exit code `130` (`143` after SIGTERM for `verbatra-mcp`). Started by
 hand with a terminal on stdin, it adds how to add it to a client, how to inspect
 it, and how to stop it. The ready line's `spend tools` says whether spend was
 granted, not whether the spend tools are listed: provider `none` still hides them.
@@ -65,7 +68,8 @@ The server registers fourteen tools but advertises only twelve by default. The
 tools that call a translation provider, `translation.retranslateEntry` and
 `translation.translatePending`, are filtered out of the tool list entirely unless
 the operator started the server with the spend capability granted
-(`verbatra mcp --allow-spend`, or `VERBATRA_MCP_ALLOW_SPEND` in its environment)
+(`verbatra mcp --allow-spend`, or `VERBATRA_MCP_ALLOW_SPEND` in its environment,
+which `verbatra mcp` also reads from the project's `.env.local` and `.env`)
 and the config names a translation provider. A project whose `project.snapshot`
 reports provider `none` is human-only: those tools stay absent even with spend
 granted, and nothing will make them appear short of the human changing the
