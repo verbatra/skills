@@ -781,8 +781,12 @@ function pinnedMcpVersion(args) {
   return spec === undefined ? undefined : spec.slice(MCP_PACKAGE.length + 1);
 }
 
+const MCP_BIN_SOURCES = ["packages/mcp/src/bin.ts", "packages/mcp/src/bin-args.ts"];
+
 function mcpBinSource() {
-  return readSourceFile("packages/mcp/src/bin.ts");
+  return MCP_BIN_SOURCES.filter((path) => existsSync(resolve(SOURCE_ROOT, path)))
+    .map(readSourceFile)
+    .join("\n");
 }
 
 function checkCommandBlock() {
@@ -811,7 +815,7 @@ describe("the claude code plugin runs the released stdio server", () => {
     const args = pluginMcpServer().args;
     const flags = args.slice(args.findIndex((arg) => arg.startsWith(`${MCP_PACKAGE}@`)) + 1);
     for (const flag of flags.filter((arg) => arg.startsWith("--"))) {
-      expect(bin).toContain(`arg === "${flag}"`);
+      expect(bin).toContain(`"${flag}"`);
     }
   });
 

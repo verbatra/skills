@@ -290,9 +290,10 @@ the envelope, never these lines.
 
 Two global flags go before or after the command name:
 
-- `-q, --quiet` prints only results and errors: no progress, no notices, no
-  `next:` hints. Warnings a person must see, such as a lock wait or keys left
-  protected, still print.
+- `-q, --quiet` prints only results and errors: no progress lines, no `next:`
+  hints, no informational stderr lines. A result summary keeps its notices, and
+  warnings a person must see, such as a lock wait or keys left protected, still
+  print.
 - `--no-color` never colours the output. `VERBATRA_NO_COLOR` does the same from
   the environment. `NO_COLOR`, `NODE_DISABLE_COLORS`, `TERM=dumb` and a truthy
   `CI` also turn colour off, and `FORCE_COLOR` turns it on or off unless
