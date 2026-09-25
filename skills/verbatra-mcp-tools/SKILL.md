@@ -21,7 +21,10 @@ from a shell instead, see `verbatra-cli`.
 
 `verbatra mcp` needs `@verbatra/mcp` beside the CLI; without it the command exits
 `2` and says so. `npx -y @verbatra/mcp` runs the server on its own, and takes the
-same `--cwd`, `--config` and `--allow-spend`. Without `--cwd` the server runs over
+same `--cwd`, `--config` and `--allow-spend`. Both refuse an unknown flag, such as
+the typo `--allowspend` or `--json`, with exit `2` and a `USAGE_ERROR` on stderr
+rather than starting without it, and both answer `--help` and `--version` with
+exit `0` without starting the server. Without `--cwd` the server runs over
 `CLAUDE_PROJECT_DIR` when that names an existing directory, which is what Claude
 Code sets for a server it starts, and over its own working directory otherwise.
 
@@ -106,7 +109,7 @@ when the operator granted spend.
 | `project.snapshot` | always | Read the resolved config: source and target locales, format, path pattern, provider id, where the config and the glossary come from, `humanEdits` and `prune`. Call it first. |
 | `status.check` | always | Per target locale, how many keys are missing, stale or up to date, how many of them are `protected`, and who wrote the current values (`provenance`). Optional `locales`. |
 | `status.diff` | always | Per target locale, the exact keys the next run would add, re-translate or orphan, the `protected` ones it would leave for a person, and `changedOrigins`. Optional `locales`. |
-| `glossary.get` | always | Read every term (shared `target`, per-locale `targets`, `forbidden` renderings, note, part of speech), the `doNotTranslate` terms, the format `version` and where the glossary comes from. Optional `locale` adds `effective`, the terms a translation into that locale is held to. |
+| `glossary.get` | always | Read every term (per-locale `targets`, `forbidden` renderings, and the shared `target`, note and part of speech when set), the `doNotTranslate` terms, the format `version` and where the glossary comes from. Optional `locale` adds `effective`, the terms a translation into that locale is held to. |
 | `glossary.write` | always | Change one term: `translation`, per-`locale` translation and `forbidden` renderings, `note`, `partOfSpeech`, `caseSensitive`, or `doNotTranslate`. `null` clears a field. Optional `lockTimeoutMs`. |
 | `lock.state` | always | Read the lock file version and the per-locale counts it implies. Reports `exists: false` before the first successful run. |
 | `key.integrity` | always | Report one key's placeholder, inline markup, ICU syntax and ICU plural, ordinal and select arm drift against the lock baseline, per target locale. Optional `locales`. A key the source lacks fails with `UNKNOWN_KEY`. |
