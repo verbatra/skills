@@ -111,14 +111,14 @@ when the operator granted spend.
 | `status.diff` | always | Per target locale, the exact keys the next run would add, re-translate or orphan, the `protected` ones it would leave for a person, and `changedOrigins`. Optional `locales`. |
 | `glossary.get` | always | Read every term (per-locale `targets`, `forbidden` renderings, and the shared `target`, note and part of speech when set), the `doNotTranslate` terms, the format `version` and where the glossary comes from. Optional `locale` adds `effective`, the terms a translation into that locale is held to. |
 | `glossary.write` | always | Change one term: `translation`, per-`locale` translation and `forbidden` renderings, `note`, `partOfSpeech`, `caseSensitive`, or `doNotTranslate`. `null` clears a field. Optional `lockTimeoutMs`. |
-| `lock.state` | always | Read the lock file version and the per-locale counts it implies. Reports `exists: false` before the first successful run. |
+| `lock.state` | always | Read the lock file version and the per-locale counts it implies, plus who wrote each locale's current values (`provenance`, by origin and by review state). Reports `exists: false` before the first successful run. |
 | `key.integrity` | always | Report one key's placeholder, inline markup, ICU syntax and ICU plural, ordinal and select arm drift against the lock baseline, per target locale. Optional `locales`. A key the source lacks fails with `UNKNOWN_KEY`. |
 | `key.value` | always | Read one key's current source text, its current text in one target locale, the translator `description` the source file gives the key, and who wrote it (`provenance`). |
 | `translation.editEntry` | always | Write a manual translation for one key in one locale, recorded with origin `agent`. No provider call. Optional `lockTimeoutMs`. |
 | `translation.estimate` | always | Price what `translation.translatePending` would send: a dry-run summary whose `estimate` carries keys, requests, tokens or characters per locale and in total, a `cost` when the config's rates cover the provider (`pricing` says why not), and `caveats`. No provider call, no key read. Optional `locales`. |
 | `translation.retranslateEntry` | spend gated | Ask the provider for a fresh translation of one key in one locale. Optional `lockTimeoutMs`. |
 | `translation.translatePending` | spend gated | Translate every missing or stale key in one run. Optional `locales`, a `maxTokens` ceiling, and `lockTimeoutMs`. |
-| `review.queue` | always | Read the keys the last run flagged for human review and a person has not decided yet, with the reason for each. |
+| `review.queue` | always | Read the keys the last run flagged for human review and a person has not decided yet, with the reason for each and the `provenance` of its current value. `available: false` means no run has recorded a snapshot yet, not an empty queue. |
 | `usage.summary` | always | Read the token usage and budget outcome left behind by the last run. |
 
 `lockTimeoutMs` (0 to 600000, default 30000) bounds how long a writing tool waits
