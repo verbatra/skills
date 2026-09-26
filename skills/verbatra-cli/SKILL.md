@@ -321,11 +321,13 @@ What a human-readable run prints:
   `waiting for changes...` between runs, `change detected: <paths>` when a source
   file is saved, and `stopped` at the end.
 - `studio` prints its URL with the session token on stdout, then on stderr whether
-  spend tools and agent tools are on or off, and `Studio stopped` at the end.
+  spend tools and agent tools are on or off (`spend tools off (provider none)` when
+  spend was granted but the config disables machine translation), and
+  `Studio stopped` at the end.
   `studio --verbose` also prints one `METHOD path status` line per request, with
   the token masked.
 - `mcp` prints `verbatra MCP server running on stdio (project <dir>, spend tools
-  on|off)` once it is ready and `verbatra MCP server stopped (client closed stdin)`
+  on|off|off (provider none))` once it is ready and `verbatra MCP server stopped (client closed stdin)`
   or `(interrupted)` at the end. Started by hand in a terminal, it also prints how
   to add it to a client, how to inspect it, and `Press Ctrl-C to stop.`
 - `watch` and `studio` print `press Ctrl-C to stop` when stdin is a terminal.

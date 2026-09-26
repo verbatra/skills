@@ -116,11 +116,11 @@ instead of retrying at once, and do not loop on it.
 | Tool | RPC method | Availability | What it does |
 | --- | --- | --- | --- |
 | `verbatra_project_snapshot` | `project.snapshot` | always | Read the resolved config and this session's capabilities. Call it first. |
-| `verbatra_status_check` | `status.check` | always | Per locale, how many keys are missing, stale or up to date. |
-| `verbatra_status_diff` | `status.diff` | always | Per locale, the exact keys the next run would add, re-translate or orphan. |
+| `verbatra_status_check` | `status.check` | always | Per locale, how many keys are missing, stale or up to date, and who wrote the current values (`provenance`). |
+| `verbatra_status_diff` | `status.diff` | always | Per locale, the exact keys the next run would add, re-translate or orphan, and the origin of each changed key's current value. |
 | `verbatra_glossary_get` | `glossary.get` | always | Read every term with its shared and per-locale translations, forbidden renderings, note and part of speech, what each target locale is held to (`byLocale`), and the terms kept untranslated. Takes no parameters. |
 | `verbatra_glossary_write` | `glossary.write` | always | Change one term: `translation`, per-`locale` translation and `forbidden`, `note`, `partOfSpeech`, `caseSensitive`, or `doNotTranslate`. `null` clears a field. Calls no provider. |
-| `verbatra_lock_state` | `lock.state` | always | Read the lock baseline and the per-locale counts it implies. |
+| `verbatra_lock_state` | `lock.state` | always | Read the lock baseline and the per-locale counts it implies, plus who wrote each locale's current values (`provenance`). |
 | `verbatra_history_list` | `history.list` | always | Recent git commits touching the source or a target locale file. Reports itself unavailable outside a git repository. |
 | `verbatra_key_integrity` | `key.integrity` | always | Whether one key's value keeps the source placeholders and inline markup, stays valid ICU, and has ICU plural, ordinal and select arms that fit the target language, per locale. Optional `locales`. |
 | `verbatra_locale_integrity` | `locale.integrity` | always | Every translation that fails those same checks right now, per target locale, in one call. Judges every key present in both the source and the locale, whatever its sync state, and lists only the failing ones. Optional `locales`. |
