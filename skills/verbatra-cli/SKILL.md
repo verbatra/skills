@@ -102,7 +102,7 @@ Read this table before running anything unattended.
 | `doctor` | no | no | no, it never reads a key value; `--literals` does not even check for one |
 | `studio` | only with `--allow-spend` or `VERBATRA_STUDIO_ALLOW_SPEND` | yes, through in-place edits | only when spend is granted |
 | `mcp` | only with `--allow-spend` or `VERBATRA_MCP_ALLOW_SPEND` (also read from `.env.local` and `.env`) | yes, through in-place edits | only when spend is granted |
-| `init` | no | yes, the config, the env example unless the provider is `none`, and `.gitignore` | no |
+| `init` | no | yes, the config, the env example unless the provider is `none`, and `.gitignore`; with `--agent` also `AGENTS.md` or `CLAUDE.md` and `.mcp.json` | no |
 | `extract` | no | yes, the source locale, unless `--dry-run` | no |
 
 `import` is worth calling out: it applies human translations from a workbook and
@@ -417,6 +417,16 @@ optionally `--api-key-env-var`, which names a variable and never holds a key. Ad
 record names the files it wrote, the resolved config, where each value came from
 (`sources`), what was detected with its `confidence`, and `nextSteps`.
 
+`--agent` (off by default) also sets the project up for coding agents: it writes
+a verbatra section between `<!-- verbatra:start -->` and `<!-- verbatra:end -->`
+markers into `AGENTS.md`, or into `CLAUDE.md` when that is the only instruction
+file (a file already holding the section keeps it), and adds the `verbatra`
+server, `npx -y @verbatra/mcp` with spending off, to `.mcp.json`. Text outside
+the markers and other servers are kept, a rerun leaves both files byte-identical,
+and a `verbatra` server that differs is left as it is and reported as
+`mcpServer: "differs"` in the record's `agent` field, which is `null` without
+the flag. Never hand-edit a differing server back without asking the human.
+
 What neither a flag nor detection decides falls back to a default: format
 `i18next-json`, source `en`, targets `de`, and the path (with its
 `files.localeStyle`) in the format's row of the Formats table. The source has no
@@ -437,6 +447,7 @@ Branch on the failure `code`, all of them exit `2`:
 | `FORMAT_AMBIGUOUS`, `LAYOUT_AMBIGUOUS` | Several fit; ask the human which of `candidates` is right and pass `--format` or `--path`. |
 | `CONFIG_EXISTS` | A `verbatra.config.ts` is already there (reported before any missing or ambiguous answer); an identical one passes as `unchanged`, a different one is refused; never add `--force` unless the human asked to replace it. Another config file verbatra would read first (or a `verbatra` key in `package.json`) is refused even with `--force`. |
 | `CONFIG_INVALID` | The answers do not form a valid config; the message says which field. |
+| `AGENT_FILE_INVALID` | With `--agent`: `.mcp.json` is not a JSON object with an `mcpServers` object, or the instruction file has unpaired or repeated verbatra markers. Nothing was written; show the human the message and let them fix the file. |
 
 Re-running `init` with the same answers is safe: an identical
 `verbatra.config.ts` is reported `unchanged`, and a missing key variable is
