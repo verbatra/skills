@@ -125,7 +125,10 @@ when the operator granted spend.
 for a write lock another process holds; past it the call fails with
 `LOCK_CONTENDED` and writes nothing (for `translation.translatePending`, only that
 locale fails). A failed call's text always starts with its code, such as
-`UNKNOWN_KEY: ...` or `RATE_LIMITED: ...`: branch on that prefix.
+`UNKNOWN_KEY: ...` or `RATE_LIMITED: ...`: branch on that prefix. When the error has a
+next step, the text ends with a `Next step: ...` line, such as `Next step: Set GEMINI_API_KEY
+in the environment or in a .env file in the project directory.`: relay it to the user, and
+never ask for the key value it names.
 
 ## How to work
 
