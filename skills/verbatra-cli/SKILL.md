@@ -263,6 +263,7 @@ type Envelope<TResult> =
       causeCode?: string;
       candidates?: string[];
       missing?: string[];
+      hint?: string;
     };
 ```
 
@@ -273,7 +274,12 @@ rejects, such as an unknown flag, carries `USAGE_ERROR`. `candidates` lists the 
 would have been accepted and `missing` the flags that still have to be passed, so
 an agent can retry with a flag instead of parsing prose. `causeCode` names the
 coded error a failure wraps, such as `MISSING_API_KEY` under
-`PROVIDER_CONSTRUCTION_FAILED`, and the stderr line ends with `(cause: <code>)`. Progress records and the
+`PROVIDER_CONSTRUCTION_FAILED`, and the stderr line ends with `(cause: <code>)`. `hint`, when
+present, is one imperative next step, such as `Set GEMINI_API_KEY in the environment or in a
+.env file in the project directory.` or, for `USAGE_ERROR`, `` Run `verbatra check --help` ... ``:
+act on it instead of parsing `message`. It names a variable, never a key value, so never ask the
+user for the value it names; ask them to set the variable. Without `--json` the same text follows
+the error line on stderr as `next: ...`. Progress records and the
 human-readable error line always go to stderr, so stdout is a clean stream of
 envelopes.
 
@@ -517,7 +523,8 @@ always these nine in this order:
 The informational checks never fail. Every check but `config` reports `skipped`
 when `config` itself failed. With `--literals` the run has exactly two checks,
 `config` and `untranslated-literals`. Branch on `id`, never on `title` or
-`detail`.
+`detail`. A failed check also carries `fix`, one imperative next step (printed as a
+`fix:` line in the human report); a passed or skipped check has none.
 
 ## Respelled locale codes
 
