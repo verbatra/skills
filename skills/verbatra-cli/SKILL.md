@@ -67,6 +67,13 @@ bills per key sent, so the cheap read-only question comes first.
   `warnings`, `invalidSourceKeys`) and each locale's findings in
   `result.locales[].qa`. An integrity error exits `1`; a review warning exits `1`
   only under `--strict`, and `--severity error` drops the warnings from the report.
+  Every `check` also lists, in `result.locales[].incompletePlurals`, each plural
+  that lacks a CLDR category its target language uses (code
+  `PLURAL_CATEGORIES_INCOMPLETE`, with `key`, `argument` for an ICU message,
+  `ruleType` and `missing`), such as a Polish Android `<plurals>` with only `one`
+  and `other`. That is a warning: it never changes `inSync` or the exit code, except
+  that `--qa --strict` exits `1` on it. Add the missing forms by hand; do not
+  delete the plural.
   `--severity` or `--strict` without `--qa`, and `--strict` with `--severity error`,
   fail with `INVALID_QA_OPTION`; a severity other than `error` or `warning` fails
   with `INVALID_SEVERITY`.
@@ -204,7 +211,7 @@ run" with "did the work land".
 | Code | Meaning |
 | --- | --- |
 | `0` | Success: nothing outstanding, or everything requested completed. |
-| `1` | It ran, the result is not clean: a locale failed or is partial, `check` found drift or, with `--qa`, an integrity error (a review warning too under `--strict`), `diff` found pending keys or, with `--unused`, a complete scan found unused source keys, `doctor` found a failed check or, with `--literals`, an untranslated literal or an unreadable source file, `types --check` found the committed declaration out of date. |
+| `1` | It ran, the result is not clean: a locale failed or is partial, `check` found drift or, with `--qa`, an integrity error (a review warning or an incomplete plural too under `--strict`), `diff` found pending keys or, with `--unused`, a complete scan found unused source keys, `doctor` found a failed check or, with `--literals`, an untranslated literal or an unreadable source file, `types --check` found the committed declaration out of date. |
 | `2` | It could not run: bad config, unreadable source, corrupt lock file, a network policy that refuses the provider's host, or a usage error such as an unknown `--locales` value. `init` also exits `2` when a flag it needs is missing, when several formats or file patterns fit, or when it refuses to replace an existing config. |
 | `3` | `translate` in a human-only project (provider `none`) finished cleanly but left keys that need a human translation. |
 | `130` | `watch`, `studio` or `mcp` was force-stopped by a second interrupt (all three return the same stoppable session), or `translate` or `import` was interrupted with SIGINT. |
@@ -506,7 +513,7 @@ sent. `doctor` reports the effective policy in its `network-policy` check.
 
 `verbatra doctor --json` returns `result.ok` and one entry per check in
 `result.checks`, each with an `id` and a `status` of `pass`, `fail` or `skipped`,
-always these nine in this order:
+always these ten in this order:
 
 | Check id | What it answers |
 | --- | --- |
@@ -517,6 +524,7 @@ always these nine in this order:
 | `network-policy` | The effective network policy permits the provider's host. |
 | `source-file` | The source locale file exists and parses. |
 | `plural-rules` | Informational: the ICU and CLDR versions plural categories come from, and any target locale ICU has no rules for. |
+| `plural-completeness` | Informational: each plural in a target locale file that lacks CLDR categories its language uses, as `check` reports them. |
 | `locale-codes` | Informational: configured codes that are valid but not canonical BCP 47, with the canonical spelling. Nothing is renamed. |
 | `locale-state` | Informational: locales the lock file, translation memory or provenance file hold state for that the config does not list, and what the next `translate` does about them. |
 
