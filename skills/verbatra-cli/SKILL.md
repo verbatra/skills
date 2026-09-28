@@ -77,6 +77,15 @@ bills per key sent, so the cheap read-only question comes first.
   `--severity` or `--strict` without `--qa`, and `--strict` with `--severity error`,
   fail with `INVALID_QA_OPTION`; a severity other than `error` or `warning` fails
   with `INVALID_SEVERITY`.
+  Add `--require-reviewed` to gate on review decisions: it exits `1` while any
+  value whose origin is `machine`, `memory`, `fuzzy` or `agent` is not approved in
+  the committed `verbatra.provenance.json`. `result.review` carries `reviewed`,
+  the `unreviewed` count and a stable `code`, `REVIEW_REQUIRED` or
+  `REVIEW_STATE_UNREADABLE` (the provenance file is corrupt or from a newer
+  verbatra, which fails the gate), and each locale lists its keys in
+  `result.locales[].review.unreviewed`. It is keyless. Approving is a person's
+  decision, made in Studio or relayed through an MCP client; never approve values
+  to make the gate pass.
 - `verbatra translate --dry-run --json` produces the full run summary a real run
   would produce. A dry run constructs no provider object at all, so it reads no
   key, opens no connection, and writes nothing. It is safe on a machine that has
@@ -222,7 +231,7 @@ run" with "did the work land".
 | Code | Meaning |
 | --- | --- |
 | `0` | Success: nothing outstanding, or everything requested completed. |
-| `1` | It ran, the result is not clean: a locale failed or is partial, `check` found drift or, with `--qa`, an integrity error (a review warning or an incomplete plural too under `--strict`), `diff` found pending keys or, with `--unused`, a complete scan found unused source keys, `doctor` found a failed check or, with `--literals`, an untranslated literal or an unreadable source file, `types --check` found the committed declaration out of date. |
+| `1` | It ran, the result is not clean: a locale failed or is partial, `check` found drift or, with `--qa`, an integrity error (a review warning or an incomplete plural too under `--strict`), or, with `--require-reviewed`, an unapproved machine-written value, `diff` found pending keys or, with `--unused`, a complete scan found unused source keys, `doctor` found a failed check or, with `--literals`, an untranslated literal or an unreadable source file, `types --check` found the committed declaration out of date. |
 | `2` | It could not run: bad config, unreadable source, corrupt lock file, a network policy that refuses the provider's host, a locale the provider does not support, or a usage error such as an unknown `--locales` value. `init` also exits `2` when a flag it needs is missing, when several formats or file patterns fit, or when it refuses to replace an existing config. |
 | `3` | `translate` in a human-only project (provider `none`) finished cleanly but left keys that need a human translation. |
 | `130` | `watch`, `studio` or `mcp` was force-stopped by a second interrupt (all three return the same stoppable session), or `translate` or `import` was interrupted with SIGINT. |

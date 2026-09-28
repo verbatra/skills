@@ -68,7 +68,7 @@ it, and how to stop it. `verbatra mcp --json` is refused with exit `2` and a
 
 ## The spend boundary
 
-The server registers fourteen tools but advertises only twelve by default. The
+The server registers sixteen tools but advertises only fourteen by default. The
 tools that call a translation provider, `translation.retranslateEntry` and
 `translation.translatePending`, are filtered out of the tool list entirely unless
 the operator started the server with the spend capability granted
@@ -85,8 +85,9 @@ would expose them, but you must say in the same breath that those tools bill the
 configured provider per run. Never present it as a fix for a missing tool.
 
 Everything else, including writing a corrected translation with
-`translation.editEntry`, editing the glossary with `glossary.write`, and pricing a
-run with `translation.estimate`, is always registered and calls no provider.
+`translation.editEntry`, editing the glossary with `glossary.write`, pricing a
+run with `translation.estimate`, and recording a person's review decision with
+`review.approve` or `review.reject`, is always registered and calls no provider.
 
 The server also sends MCP `instructions` on connect that restate this order of
 work, the spend boundary, protected keys, untrusted content, redaction and the
@@ -118,7 +119,9 @@ when the operator granted spend.
 | `translation.estimate` | always | Price what `translation.translatePending` would send: a dry-run summary whose `estimate` carries keys, requests, tokens or characters per locale and in total, a `cost` when the config's rates cover the provider (`pricing` says why not), and `caveats`. No provider call, no key read. Optional `locales`. |
 | `translation.retranslateEntry` | spend gated | Ask the provider for a fresh translation of one key in one locale. Optional `lockTimeoutMs`. |
 | `translation.translatePending` | spend gated | Translate every missing or stale key in one run. Optional `locales`, a `maxTokens` ceiling, and `lockTimeoutMs`. |
-| `review.queue` | always | Read the keys the last run flagged for human review and a person has not decided yet, with the reason for each and the `provenance` of its current value. `available: false` means no run has recorded a snapshot yet, not an empty queue. |
+| `review.queue` | always | Read every value a provider, the translation memory, a fuzzy match or an agent wrote that no person has approved yet, from the committed files, with the `provenance` of each and the `reasons` the last run on this machine flagged it with. `available: false` means the provenance file is unreadable, not an empty queue. |
+| `review.approve` | always | Record, only on the user's explicit instruction, that a named person accepts one key's current translation. Takes `locale`, `key`, the `expectedValue` the user reviewed, a required `reviewer`, and optional `lockTimeoutMs`. No provider call. |
+| `review.reject` | always | Record, only on the user's explicit instruction, that a named person refuses one key's current translation; the value is removed so the next run replaces it. Same inputs as `review.approve`. No provider call. |
 | `usage.summary` | always | Read the token usage and budget outcome left behind by the last run. |
 
 `lockTimeoutMs` (0 to 600000, default 30000) bounds how long a writing tool waits
@@ -150,7 +153,8 @@ Read before you write, and diff before you spend.
    when the human agreed to a ceiling, or `translation.retranslateEntry` for one
    key.
 6. `review.queue` and `usage.summary` afterwards, to report what needs a human and
-   what the run consumed.
+   what the run consumed. Record a decision with `review.approve` or
+   `review.reject` only when the user tells you to, under the name they give.
 
 ## What the results mean
 
@@ -204,17 +208,26 @@ Read before you write, and diff before you spend.
   whatever is still pending. It is not all or nothing either: a run that fails
   partway can leave some locales written and others untouched. Never retry it as
   though it were free.
-- `review.queue` reporting `available: false` means no non-dry run has completed
-  in this project yet. That is a normal state, not a failure. A key leaves the
-  queue once a person approves or rejects its current value, rewrites or imports
-  it, or it loses its translation. A key you corrected with
-  `translation.editEntry` stays listed, because an agent's edit still needs a
-  person's review.
+- `review.queue` is built from the committed locale files, lock file and
+  `verbatra.provenance.json`, so it is the same queue every teammate and
+  `verbatra check --require-reviewed` see. `available: false` means the
+  provenance file is corrupt or from a newer verbatra. A key leaves the queue once
+  its current value is approved or rejected, or a person rewrites or imports it.
+  A key you corrected with `translation.editEntry` stays listed, because an
+  agent's edit still needs a person's review.
+- `review.approve` and `review.reject` relay a person's decision. Never approve
+  or reject your own translations or edits on your own initiative, and never
+  invent the `reviewer`: ask the user for the name that is stored, publicly, in
+  the committed file. Both refuse a value other than `expectedValue` with
+  `REVIEW_VALUE_CHANGED`; `review.approve` refuses a value whose source changed
+  with `REVIEW_SOURCE_CHANGED`, and `review.reject` refuses an XLIFF project with
+  `REVIEW_REJECT_UNSUPPORTED`.
 - Every tool returns `structuredContent` matching its declared `outputSchema`,
   plus the same JSON as text, and carries `readOnlyHint`, `destructiveHint`,
-  `idempotentHint` and `openWorldHint` annotations. Every tool but four is
-  read-only. `translation.editEntry` and `glossary.write` are destructive but
-  idempotent and stay local; `translation.retranslateEntry` and
+  `idempotentHint` and `openWorldHint` annotations. Every tool but six is
+  read-only. `review.approve` is neither destructive nor open-world;
+  `translation.editEntry`, `glossary.write` and `review.reject` are destructive
+  but idempotent and stay local; `translation.retranslateEntry` and
   `translation.translatePending` are destructive, not idempotent, and open-world,
   because they call the provider. A failed call comes back with
   `isError: true` and a message led by an error code such as `UNKNOWN_KEY`.

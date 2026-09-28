@@ -20,7 +20,7 @@ exits `2` and names the fix, including
 installing. Starting Studio is the operator's step, not yours.
 
 This is one of two agent surfaces and the sets differ. The stdio MCP server has
-fourteen tools with dotted names such as `status.check`; Studio has eighteen, with
+sixteen tools with dotted names such as `status.check`; Studio has twenty, with
 underscored names such as `verbatra_status_check`, and adds four the stdio server
 does not have. `verbatra-mcp-tools` covers the stdio server. `verbatra-cli` covers
 the binary. Do not assume a tool exists on one surface because you saw it on the
@@ -70,7 +70,7 @@ Studio decides twice what an agent may do, and the two decisions are independent
    `verbatra_translation_translatePending`, are still skipped during registration
    unless Studio was also started with `--allow-spend` (or
    `VERBATRA_STUDIO_ALLOW_SPEND`) and the config names a translation provider.
-   The other sixteen register either way. `verbatra_project_snapshot` says which:
+   The other eighteen register either way. `verbatra_project_snapshot` says which:
    `capabilities.spend` is true only when both hold, and when it is false,
    `capabilities.spendWithheld` is `flag` (spend was not granted) or `policy` (the
    project is human-only, provider `none`, so no flag can grant it).
@@ -80,13 +80,18 @@ would change what, but say plainly that granting spend means Studio will bill th
 configured provider. Never present a re-launch as a fix for a missing tool.
 
 Local editing and pricing are never gated. `verbatra_translation_editEntry`,
-`verbatra_glossary_write` and `verbatra_translation_estimate` are always registered
-when agent tools are on, because they call no provider.
+`verbatra_glossary_write`, `verbatra_translation_estimate`,
+`verbatra_review_approve` and `verbatra_review_reject` are always registered when
+agent tools are on, because they call no provider.
 
-Approving or rejecting a review entry is reserved for a person. The dashboard's
-`review.approve` and `review.reject` methods, and their bulk forms
-`review.approveMany` and `review.rejectMany`, are never registered as tools, on
-purpose: an agent cannot sign off its own work. The same holds for
+A review decision is a person's. `verbatra_review_approve` and
+`verbatra_review_reject` exist so you can relay one, never so you sign off your
+own work: call them only when the user has read the value and told you which
+decision to record, pass the text they reviewed as `expectedValue`, and pass the
+name they give you as `reviewer`, which is required and stored publicly in the
+committed `verbatra.provenance.json`. Never invent a reviewer. The bulk forms
+`review.approveMany` and `review.rejectMany`, and `review.approveLocale`, which
+approves a whole locale's queue, are never registered as tools. The same holds for
 `translation.retranslateEntries`, the dashboard's retranslate-a-selection action,
 and `translation.inFlight`, which only tells the page whether a run is already
 going. There is no agent tool for any of them; act on one key at a time with the
@@ -124,7 +129,9 @@ instead of retrying at once, and do not loop on it.
 | `verbatra_history_list` | `history.list` | always | Recent git commits touching the source or a target locale file. Reports itself unavailable outside a git repository. |
 | `verbatra_key_integrity` | `key.integrity` | always | Whether one key's value keeps the source placeholders and inline markup, stays valid ICU, and has ICU plural, ordinal and select arms that fit the target language, per locale. Optional `locales`. |
 | `verbatra_locale_integrity` | `locale.integrity` | always | Every translation that fails those same checks right now, per target locale, in one call. Judges every key present in both the source and the locale, whatever its sync state, and lists only the failing ones. Optional `locales`. |
-| `verbatra_review_queue` | `review.queue` | always | The entries the last recorded run flagged for human review, with reason codes. |
+| `verbatra_review_queue` | `review.queue` | always | Every value a provider, the translation memory, a fuzzy match or an agent wrote that no person has approved, from the committed files, with its `provenance` and the last run's reason codes. Optional `includeApproved`. |
+| `verbatra_review_approve` | `review.approve` | always | Record, only on the user's instruction, that a named person accepts one key's current translation. Requires `expectedValue` and `reviewer`. No provider call. |
+| `verbatra_review_reject` | `review.reject` | always | Record, only on the user's instruction, that a named person refuses one key's current translation, removing it so it gets replaced. Requires `expectedValue` and `reviewer`. No provider call. |
 | `verbatra_usage_summary` | `usage.summary` | always | Token usage and budget figures recorded by the last run. |
 | `verbatra_key_value` | `key.value` | always | Source and target text for exactly one key in one locale, with the key's translator `description` and who wrote the target (`provenance`). |
 | `verbatra_key_context` | `key.context` | always | What a translator needs for one key in one locale: source, target, `description`, `provenance`, the glossary terms that apply, and the key's `maxLength` when the config sets one. Optional `draft` adds a `draftCheck` against those terms. |
@@ -172,12 +179,14 @@ instead of retrying at once, and do not loop on it.
   pending, and a run that fails partway can leave some locales written and others
   untouched. Only one run may be in flight, so a concurrent second call is refused
   rather than queued.
-- `verbatra_review_queue` and `verbatra_usage_summary` read a snapshot only a real
-  translation run refreshes. An unavailable result means no run has ever recorded
-  one, which is not the same as an empty queue or zero usage. A key leaves the
-  review queue once a person approves or rejects it in the dashboard, rewrites it,
-  or it loses its translation. A key you fixed with `verbatra_translation_editEntry`
-  stays listed, because an agent's edit still needs a person's review.
+- `verbatra_usage_summary` reads a snapshot only a real translation run
+  refreshes; an unavailable result means no run has ever recorded one, not zero
+  usage. `verbatra_review_queue` is built from the committed files, so every
+  teammate sees the same queue; an unavailable result means the provenance file
+  is corrupt or from a newer verbatra, not an empty queue. A key leaves the
+  review queue once its value is approved or rejected, or a person rewrites or
+  imports it. A key you fixed with `verbatra_translation_editEntry` stays listed,
+  because an agent's edit still needs a person's review.
 - Protected keys are left for a person. A stale value a person wrote, imported or
   changed outside verbatra, and any key matching `pinnedKeys`, is skipped by
   `verbatra_translation_translatePending` and listed under each locale's
