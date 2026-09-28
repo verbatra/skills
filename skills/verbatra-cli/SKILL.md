@@ -89,6 +89,17 @@ bills per key sent, so the cheap read-only question comes first.
   is withheld rather than sent, and its keys are listed under `budgetWithheld`. A
   token budget and `--concurrency` above `1` cannot be combined.
 
+Before the first run against DeepL or Google Cloud Translation, or after adding
+a target locale, `verbatra doctor --locales` shows what the provider supports for
+every target locale: the code it is sent as, `supported`, `unverified` or
+`unsupported`, and whether a glossary and a formality setting can be applied.
+It is judged against a dated table verbatra ships, calls no provider and needs no
+key; `--live` checks against the provider's current list instead, when its key is
+set. `translate` refuses an `unsupported` locale up front with
+`LOCALE_UNSUPPORTED_BY_PROVIDER` (exit `2`, nothing started, nothing spent), so
+drop it with `--locales` or ask the human; never map it in `localeMap` on your own
+to get past the refusal.
+
 Never run `verbatra translate` to find out whether there is anything to do.
 
 ## Commands
@@ -106,7 +117,7 @@ Read this table before running anything unattended.
 | `diff` | no | no | no |
 | `pseudo` | no | yes, a pseudolocale under the out directory | no |
 | `types` | no | yes, the generated declaration, unless `--check` | no |
-| `doctor` | no | no | no, it never reads a key value; `--literals` does not even check for one |
+| `doctor` | no | no | no, it never reads a key value; `--literals` does not even check for one; `--live` sends the key to fetch the provider's language list, which uses no translation quota |
 | `studio` | only with `--allow-spend` or `VERBATRA_STUDIO_ALLOW_SPEND` | yes, through in-place edits | only when spend is granted |
 | `mcp` | only with `--allow-spend` or `VERBATRA_MCP_ALLOW_SPEND` (also read from `.env.local` and `.env`) | yes, through in-place edits | only when spend is granted |
 | `init` | no | yes, the config, the env example unless the provider is `none`, and `.gitignore`; with `--agent` also `AGENTS.md` or `CLAUDE.md` and `.mcp.json` | no |
@@ -212,7 +223,7 @@ run" with "did the work land".
 | --- | --- |
 | `0` | Success: nothing outstanding, or everything requested completed. |
 | `1` | It ran, the result is not clean: a locale failed or is partial, `check` found drift or, with `--qa`, an integrity error (a review warning or an incomplete plural too under `--strict`), `diff` found pending keys or, with `--unused`, a complete scan found unused source keys, `doctor` found a failed check or, with `--literals`, an untranslated literal or an unreadable source file, `types --check` found the committed declaration out of date. |
-| `2` | It could not run: bad config, unreadable source, corrupt lock file, a network policy that refuses the provider's host, or a usage error such as an unknown `--locales` value. `init` also exits `2` when a flag it needs is missing, when several formats or file patterns fit, or when it refuses to replace an existing config. |
+| `2` | It could not run: bad config, unreadable source, corrupt lock file, a network policy that refuses the provider's host, a locale the provider does not support, or a usage error such as an unknown `--locales` value. `init` also exits `2` when a flag it needs is missing, when several formats or file patterns fit, or when it refuses to replace an existing config. |
 | `3` | `translate` in a human-only project (provider `none`) finished cleanly but left keys that need a human translation. |
 | `130` | `watch`, `studio` or `mcp` was force-stopped by a second interrupt (all three return the same stoppable session), or `translate` or `import` was interrupted with SIGINT. |
 | `143` | `translate` or `import` was stopped with SIGTERM. |
@@ -365,6 +376,7 @@ exits `1`.
 | `MACHINE_TRANSLATION_DISABLED` | Provider `none`: a provider-spending action was refused before any key was read. |
 | `PROVIDER_CONSTRUCTION_FAILED` | The provider could not be built, most often because its key variable is not set (`causeCode` `MISSING_API_KEY`). Name the variable; never ask for the value. |
 | `NETWORK_POLICY_VIOLATION` | The network policy refuses the provider's host. Report it; do not loosen the policy yourself. |
+| `LOCALE_UNSUPPORTED_BY_PROVIDER` | DeepL or Google Cloud Translation does not list a configured locale, so the whole run was refused before anything started or was spent. Run `doctor --locales`, then drop the locale with `--locales` or ask the human. |
 | `GLOSSARY_NOT_FILE_BACKED`, `GLOSSARY_UNWRITABLE` | The glossary is inline or absent, or its file or lock could not be written. |
 | `CONCURRENCY_INVALID`, `CONCURRENCY_BUDGET_CONFLICT`, `MAX_TOKENS_INVALID` | Bad `--concurrency` or `--max-tokens`, or a concurrency above `1` together with a token budget. |
 | `LOCALE_LAYOUT_INVALID`, `LOCALE_PATH_COLLISION` | `files.pattern` and `files.localeStyle` do not fit, or two locales map to one file. |
@@ -385,8 +397,11 @@ A run that completed can still carry notices, each in
 `result.locales[].notices` with a `code`: `PLURAL_CATEGORIES_INCOMPLETE`,
 `SUB_BATCH_FAILED`, `BLANK_ROW_BASELINE_RETAINED`, `BUDGET_TOKENS_EXCEEDED`,
 `CACHE_VERSION_UNRECOGNIZED`, `PROVENANCE_VERSION_UNRECOGNIZED`,
-`PROVENANCE_FILE_TOO_LARGE`, `LOCALE_STATE_CARRIED_OVER` and
-`LOCALE_STATE_CARRY_OVER_SKIPPED`, plus the codes a provider raises. A notice is
+`PROVENANCE_FILE_TOO_LARGE`, `LOCALE_STATE_CARRIED_OVER`,
+`LOCALE_STATE_CARRY_OVER_SKIPPED`, and the locale support warnings
+`LOCALE_UNVERIFIED_BY_PROVIDER`, `LOCALE_NOT_WELL_TESTED`,
+`GLOSSARY_UNSUPPORTED_BY_PROVIDER` and `FORMALITY_UNSUPPORTED_BY_PROVIDER`,
+plus the codes a provider raises. A notice is
 something to report, not a failure; the exit code already says whether the run was
 clean.
 
@@ -461,7 +476,7 @@ Branch on the failure `code`, all of them exit `2`:
 | --- | --- |
 | `MISSING_OPTIONS` | Pass the flags listed in `missing`, or `--yes` to take the defaults. `--yes` cannot fill a flag without a default: `openai-compatible` still needs `--base-url` and `--model`. |
 | `INVALID_PROVIDER`, `INVALID_FORMAT` | Pass one of the values listed in `candidates`. |
-| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible`, or `--cwd` names no existing directory. |
+| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible`, or `--cwd` names no existing directory. `doctor` raises it too, for `--locales` or `--live` together with `--literals`. |
 | `INIT_UNWRITABLE` | `init` could not write a file into its directory, for example a read-only one. The message names the file, the file-system code and any file already written; tell the human rather than retrying. |
 | `FORMAT_AMBIGUOUS`, `LAYOUT_AMBIGUOUS` | Several fit; ask the human which of `candidates` is right and pass `--format` or `--path`. |
 | `CONFIG_EXISTS` | A `verbatra.config.ts` is already there (reported before any missing or ambiguous answer); an identical one passes as `unchanged`, a different one is refused; never add `--force` unless the human asked to replace it. Another config file verbatra would read first (or a `verbatra` key in `package.json`) is refused even with `--force`. |
@@ -513,7 +528,7 @@ sent. `doctor` reports the effective policy in its `network-policy` check.
 
 `verbatra doctor --json` returns `result.ok` and one entry per check in
 `result.checks`, each with an `id` and a `status` of `pass`, `fail` or `skipped`,
-always these ten in this order:
+always these eleven in this order:
 
 | Check id | What it answers |
 | --- | --- |
@@ -527,6 +542,7 @@ always these ten in this order:
 | `plural-completeness` | Informational: each plural in a target locale file that lacks CLDR categories its language uses, as `check` reports them. |
 | `locale-codes` | Informational: configured codes that are valid but not canonical BCP 47, with the canonical spelling. Nothing is renamed. |
 | `locale-state` | Informational: locales the lock file, translation memory or provenance file hold state for that the config does not list, and what the next `translate` does about them. |
+| `locales` | The provider supports the source and every target locale; fails on the locale `translate` would refuse, `skipped` for provider `none`. The per-locale report is in `result.locales`. |
 
 The informational checks never fail. Every check but `config` reports `skipped`
 when `config` itself failed. With `--literals` the run has exactly two checks,
