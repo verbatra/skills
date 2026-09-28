@@ -426,6 +426,12 @@ the markers and other servers are kept, a rerun leaves both files byte-identical
 and a `verbatra` server that differs is left as it is and reported as
 `mcpServer: "differs"` in the record's `agent` field, which is `null` without
 the flag. Never hand-edit a differing server back without asking the human.
+In a project that already has a config, run `verbatra init --agent --json` with
+no config flag and no `--force`: it keeps the config untouched (listed
+`unchanged`, `agent.configKept: true`, and `config`, `sources`, `apiKeyEnvVar`
+and `detection` are `null`) and writes only the agent files. Adding a config flag
+puts the config back into the run, so a differing answer is refused with
+`CONFIG_EXISTS`.
 
 What neither a flag nor detection decides falls back to a default: format
 `i18next-json`, source `en`, targets `de`, and the path (with its
