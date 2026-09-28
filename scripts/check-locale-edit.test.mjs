@@ -152,6 +152,40 @@ describe("the hook reports only the edited file's locale", () => {
     expect(report).not.toContain("greeting");
   });
 
+  it("matches a gettext zh_TW file to the configured zh-Hant-TW locale", () => {
+    const { deps } = runRecorder(
+      envelope([
+        localeReport("de", [finding("greeting", "placeholder")]),
+        localeReport("zh-Hant-TW", [finding("title", "markup")]),
+      ]),
+    );
+    deps.readPattern = () => "locale/{locale}/LC_MESSAGES/messages.po";
+    const report = evaluate(
+      edit(resolve(PROJECT, "locale/zh_TW/LC_MESSAGES/messages.po")),
+      PROJECT,
+      deps,
+    );
+    expect(report).toContain("- zh-Hant-TW title: markup");
+    expect(report).not.toContain("greeting");
+  });
+
+  it("matches a gettext sr@latin file to the configured sr-Latn locale", () => {
+    const { deps } = runRecorder(
+      envelope([
+        localeReport("de", [finding("greeting", "placeholder")]),
+        localeReport("sr-Latn", [finding("title", "markup")]),
+      ]),
+    );
+    deps.readPattern = () => "locale/{locale}/LC_MESSAGES/messages.po";
+    const report = evaluate(
+      edit(resolve(PROJECT, "locale/sr@latin/LC_MESSAGES/messages.po")),
+      PROJECT,
+      deps,
+    );
+    expect(report).toContain("- sr-Latn title: markup");
+    expect(report).not.toContain("greeting");
+  });
+
   it("stays quiet when the edited locale has no integrity error even if another has", () => {
     const { deps } = runRecorder(
       envelope([localeReport("de", []), localeReport("fr", [finding("farewell", "icu")])]),
@@ -255,6 +289,15 @@ describe("the hook finds the pattern and the cli the project itself provides", (
       "package.json": JSON.stringify({ verbatra: { files: { pattern: "l/{locale}.json" } } }),
     });
     expect(configuredPattern(root)).toBe("l/{locale}.json");
+  });
+
+  it("maps gettext script modifiers and numeric regions to locales", () => {
+    expect(localeOfSpelling("sr@latin")).toBe("sr-latn");
+    expect(localeOfSpelling("sr_RS@latin")).toBe("sr-latn-rs");
+    expect(localeOfSpelling("uz@cyrillic")).toBe("uz-cyrl");
+    expect(localeOfSpelling("ks_IN@devanagari")).toBe("ks-deva-in");
+    expect(localeOfSpelling("es_419")).toBe("es-419");
+    expect(localeOfSpelling("zh_Hant_TW")).toBe("zh-hant-tw");
   });
 
   it("maps android resource directories to locales", () => {

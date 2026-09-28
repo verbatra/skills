@@ -150,13 +150,22 @@ export function matchPattern(pattern, relativePath) {
   return parts.length === 1 ? { matches: true } : { matches: true, spelling: match[1] };
 }
 
+const SCRIPT_MODIFIERS = { latin: "latn", cyrillic: "cyrl", devanagari: "deva" };
+
+function posixLocale(spelling) {
+  const [base, modifier] = spelling.split("@");
+  const [language, ...rest] = base.split("_");
+  const script = modifier === undefined ? [] : [SCRIPT_MODIFIERS[modifier] ?? modifier];
+  return [language, ...script, ...rest].join("-").toLowerCase();
+}
+
 export function localeOfSpelling(spelling) {
   if (spelling === "values") {
     return undefined;
   }
   const android = /^values-(.+)$/.exec(spelling);
   if (android === null) {
-    return spelling.replaceAll("_", "-").toLowerCase();
+    return posixLocale(spelling);
   }
   const qualifier = android[1];
   if (qualifier.startsWith("b+")) {
@@ -229,12 +238,27 @@ function isInScope(locale, target) {
   return target.scope === "all" || String(locale).toLowerCase() === target.locale;
 }
 
+function maximized(locale) {
+  try {
+    return new Intl.Locale(locale).maximize().toString().toLowerCase();
+  } catch {
+    return undefined;
+  }
+}
+
 function effectiveTarget(result, target) {
   if (target.scope === "all") {
     return target;
   }
-  const isTargetLocale = (result.locales ?? []).some((locale) => isInScope(locale.locale, target));
-  return isTargetLocale ? target : { scope: "all" };
+  const locales = (result.locales ?? []).map((locale) => String(locale.locale).toLowerCase());
+  if (locales.includes(target.locale)) {
+    return target;
+  }
+  const wanted = maximized(target.locale);
+  const equivalent = locales.filter(
+    (locale) => wanted !== undefined && maximized(locale) === wanted,
+  );
+  return equivalent.length === 1 ? { scope: "locale", locale: equivalent[0] } : { scope: "all" };
 }
 
 function integrityFindings(result, requested) {
