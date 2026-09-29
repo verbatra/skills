@@ -68,10 +68,11 @@ claude plugin marketplace add verbatra/skills
 claude plugin install verbatra@verbatra -s project
 ```
 
-Project scope is the recommended one because the MCP server only works in a project
-that has a verbatra config: `-s project` records the plugin in the project's
+Project scope is the recommended one because the MCP server only does useful work in
+a project that has a verbatra config: `-s project` records the plugin in the project's
 `.claude/settings.json`, so it is enabled where it works and for everyone who opens
-the project, instead of starting a server that fails in every other project. Inside
+the project, instead of starting a server in every other project that can only report
+the missing config. Inside
 a Claude Code session, `/plugin marketplace add verbatra/skills` and
 `/plugin install verbatra@verbatra` work too; the shell commands above make the
 scope explicit.
@@ -83,8 +84,10 @@ What the plugin adds:
 - **The MCP server** `verbatra`: `npx -y @verbatra/mcp@<version> --cwd <project>`,
   run over the project Claude Code has open. The version is pinned in
   [`.mcp.json`](./.mcp.json), and the parity workflow fails whenever the pin differs
-  from the `@verbatra/mcp` version in the source repository. The server needs a verbatra config in the
-  project, so run `npx verbatra init` there first. It reads a provider API key from
+  from the `@verbatra/mcp` version in the source repository. Without a usable verbatra config
+  in the project it still starts, but only `project.snapshot` and `project.doctor`
+  work: run `npx verbatra init` there, and the next tool call picks the config up
+  without a restart. It reads a provider API key from
   the environment Claude Code runs in; the plugin has no key option and never
   should.
 - **Spending off by default.** The tools that call a translation provider and bill
