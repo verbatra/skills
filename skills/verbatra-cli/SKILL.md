@@ -130,7 +130,7 @@ Read this table before running anything unattended.
 | --- | --- | --- | --- |
 | `translate` | yes, unless `--dry-run`, `--estimate` or provider `none` | yes | yes, for a real run with a provider |
 | `watch` | yes, once per source change, unless provider `none` | yes | yes, unless provider `none` |
-| `export` | no | yes, the translator handoff workbook | no |
+| `export` | no | yes, the translator handoff: a workbook, CSV, TSV or XLIFF | no |
 | `import` | no | yes, target locales and the lock file | no |
 | `tmx` | no | yes on import, the translation memory; yes on export, the TMX file | no |
 | `check` | no | no | no |
@@ -146,6 +146,15 @@ Read this table before running anything unattended.
 `import` is worth calling out: it applies human translations from a workbook and
 holds them to the same integrity gate as provider output, at no provider cost.
 When a human has already done the work, `export` then `import` is the free path.
+
+For a translation agency working in a CAT tool (Trados, memoQ, OmegaT, Phrase),
+`verbatra export --format xliff2` (or `xliff12` for an older tool) writes one
+`<locale>.xlf` per locale into the `--out` directory, with placeholders protected
+as inline codes. `verbatra import` reads it back through the same gate; a path
+ending in `.xlf` or `.xliff` needs no `--format`. A unit the agency marked
+`reviewed` or `final` is recorded as approved and reported with the notice
+`HANDOFF_REVIEWS_RECORDED`. `--reviewer <name>` names who approved it; that is a
+person's decision, so pass only the name the human gave you.
 
 A human-readable `import` or `translate` summary counts each locale's outcome
 (`1 notice` / `2 notices`, `malformed-row(s)`, `duplicate-key(s)`,
@@ -355,8 +364,8 @@ What a human-readable run prints:
   `[warn] finished in ..., see the summary above` when the exit code is not `0`.
 - `next:` hints with the command to run after it, such as `verbatra check` after a
   successful translate. A hint repeats the `--cwd` and `--config` the command was
-  given, and the `--format` of a `csv` or `tsv` export or import, so it can be run
-  as printed.
+  given, the `--format` of a `csv`, `tsv`, `xliff2` or `xliff12` export or import,
+  and the `--reviewer` of an import, so it can be run as printed.
 - A dry run counts keys as `would translate` (`would import` for `import`) and
   `would prune`, never as translated.
 - File paths inside the working directory print relative to it; paths outside it
@@ -416,7 +425,8 @@ instead of copying this table.
 
 A run that completed can still carry notices, each in
 `result.locales[].notices` with a `code`: `PLURAL_CATEGORIES_INCOMPLETE`,
-`SUB_BATCH_FAILED`, `BLANK_ROW_BASELINE_RETAINED`, `BUDGET_TOKENS_EXCEEDED`,
+`SUB_BATCH_FAILED`, `BLANK_ROW_BASELINE_RETAINED`, `HANDOFF_REVIEWS_RECORDED`,
+`BUDGET_TOKENS_EXCEEDED`,
 `CACHE_VERSION_UNRECOGNIZED`, `PROVENANCE_VERSION_UNRECOGNIZED`,
 `PROVENANCE_FILE_TOO_LARGE`, `LOCALE_STATE_CARRIED_OVER`,
 `LOCALE_STATE_CARRY_OVER_SKIPPED`, and the locale support warnings
