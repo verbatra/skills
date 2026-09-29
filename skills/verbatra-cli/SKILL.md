@@ -27,8 +27,9 @@ Reach for those when you are holding tools rather than a shell.
 
 1. Keys live in environment variables only. verbatra reads `ANTHROPIC_API_KEY`,
    `OPENAI_API_KEY`, `GEMINI_API_KEY`, `DEEPL_API_KEY`,
-   `GOOGLE_TRANSLATE_API_KEY`, or `OPENAI_COMPATIBLE_API_KEY` from the process
-   environment. There is no key argument and no key field in the config file.
+   `GOOGLE_TRANSLATE_API_KEY`, `OPENAI_COMPATIBLE_API_KEY`, or
+   `LIBRETRANSLATE_API_KEY` from the process environment. There is no key
+   argument and no key field in the config file.
    Never write a key value into a file, a command line, a commit, or your own
    output. Name the variable and let the human fill it in.
 2. Ask before spending. A real translate run bills the provider the moment it
@@ -460,7 +461,8 @@ finds and falls back to the `package.json` dependencies only when no locale file
 decides it. Unattended, run it with `--json` (which never prompts) and every
 choice you already know as a flag: `--provider`, `--format`, `--source`,
 `--targets`, `--path`, and for `openai-compatible` also `--base-url`, `--model` and
-optionally `--api-key-env-var`, which names a variable and never holds a key. Add
+optionally `--api-key-env-var`, which names a variable and never holds a key, or for
+`libretranslate` only `--base-url`. Add
 `--yes` to accept a default for anything neither passed nor detected. The success
 record names the files it wrote, the resolved config, where each value came from
 (`sources`), what was detected with its `confidence`, and `nextSteps`.
@@ -494,9 +496,9 @@ Branch on the failure `code`, all of them exit `2`:
 
 | Code | What to do |
 | --- | --- |
-| `MISSING_OPTIONS` | Pass the flags listed in `missing`, or `--yes` to take the defaults. `--yes` cannot fill a flag without a default: `openai-compatible` still needs `--base-url` and `--model`. |
+| `MISSING_OPTIONS` | Pass the flags listed in `missing`, or `--yes` to take the defaults. `--yes` cannot fill a flag without a default: `openai-compatible` still needs `--base-url` and `--model`, and `libretranslate` needs `--base-url`. |
 | `INVALID_PROVIDER`, `INVALID_FORMAT` | Pass one of the values listed in `candidates`. |
-| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible`, or `--cwd` names no existing directory. `doctor` raises it too, for `--locales` or `--live` together with `--literals`, and `check` for an empty `--file` or `--file` with `--locales` or `--consistency`. |
+| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible` or `libretranslate`, or `--cwd` names no existing directory. `doctor` raises it too, for `--locales` or `--live` together with `--literals`, and `check` for an empty `--file` or `--file` with `--locales` or `--consistency`. |
 | `INIT_UNWRITABLE` | `init` could not write a file into its directory, for example a read-only one. The message names the file, the file-system code and any file already written; tell the human rather than retrying. |
 | `FORMAT_AMBIGUOUS`, `LAYOUT_AMBIGUOUS` | Several fit; ask the human which of `candidates` is right and pass `--format` or `--path`. |
 | `CONFIG_EXISTS` | A `verbatra.config.ts` is already there (reported before any missing or ambiguous answer); an identical one passes as `unchanged`, a different one is refused; never add `--force` unless the human asked to replace it. Another config file verbatra would read first (or a `verbatra` key in `package.json`) is refused even with `--force`. |
@@ -517,12 +519,17 @@ appended to `.env.example` rather than replacing it. Run `doctor` afterwards.
 | `deepl` | `DEEPL_API_KEY` |
 | `google-translate` | `GOOGLE_TRANSLATE_API_KEY` |
 | `openai-compatible` | `OPENAI_COMPATIBLE_API_KEY`, or a custom variable named in the config |
+| `libretranslate` | `LIBRETRANSLATE_API_KEY`, optional: only a server started with `--api-keys` needs it |
 | `none` | none; no provider is constructed and no key is read |
 
 Ask the human which provider to use unless the project already answers it. Do not
 pick one that spends against a service nobody agreed to. `openai-compatible`
-points at a local or self-hosted server and is the one that may legitimately need
-no key at all.
+points at a local or self-hosted server and `libretranslate` at a self-hosted
+LibreTranslate server (machine translation with no language model); both may
+legitimately need no key at all. `libretranslate` translates placeholder-bearing
+strings through numbered markers but withholds a value that still carries ICU
+syntax with `PLACEHOLDER_UNSUPPORTED`, and its locales stay `unverified` until
+`doctor --locales --live` checks them against the server.
 
 `provider: { id: "none" }` is the human-only mode. `translate` and `watch` fill
 keys from the translation memory alone and report every other key as `unfilled`,
