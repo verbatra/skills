@@ -20,9 +20,10 @@ exits `2` and names the fix, including
 installing. Starting Studio is the operator's step, not yours.
 
 This is one of two agent surfaces and the sets differ. The stdio MCP server has
-sixteen tools with dotted names such as `status.check`; Studio has twenty, with
-underscored names such as `verbatra_status_check`, and adds four the stdio server
-does not have. `verbatra-mcp-tools` covers the stdio server. `verbatra-cli` covers
+seventeen tools with dotted names such as `status.check`; Studio has twenty, with
+underscored names such as `verbatra_status_check`, adds four the stdio server
+does not have, and lacks one the stdio server has, `project.doctor`.
+`verbatra-mcp-tools` covers the stdio server. `verbatra-cli` covers
 the binary. Do not assume a tool exists on one surface because you saw it on the
 other.
 
