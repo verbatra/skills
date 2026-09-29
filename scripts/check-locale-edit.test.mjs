@@ -424,6 +424,30 @@ describe("the hook finds the pattern and the cli the project itself provides", (
     expect(configuredPattern(root)).toBe("l/{locale}.json");
   });
 
+  it("reads the package.json verbatra property before a config file, as the CLI's search does", () => {
+    const root = tempProject({
+      "package.json": JSON.stringify({ verbatra: { files: { pattern: "l/{locale}.json" } } }),
+      "verbatra.config.ts": 'export default defineConfig({ files: { pattern: "m/{locale}.json" } });\n',
+    });
+    expect(configuredPattern(root)).toBe("l/{locale}.json");
+  });
+
+  it("skips a package.json without a verbatra property and reads the config file", () => {
+    const root = tempProject({
+      "package.json": JSON.stringify({ name: "app" }),
+      "verbatra.config.ts": 'export default defineConfig({ files: { pattern: "m/{locale}.json" } });\n',
+    });
+    expect(configuredPattern(root)).toBe("m/{locale}.json");
+  });
+
+  it("skips an unparseable package.json and reads the config file", () => {
+    const root = tempProject({
+      "package.json": "{",
+      "verbatra.config.ts": 'export default defineConfig({ files: { pattern: "m/{locale}.json" } });\n',
+    });
+    expect(configuredPattern(root)).toBe("m/{locale}.json");
+  });
+
   it("maps gettext script modifiers and numeric regions to locales", () => {
     expect(localeOfSpelling("sr@latin")).toBe("sr-latn");
     expect(localeOfSpelling("sr_RS@latin")).toBe("sr-latn-rs");

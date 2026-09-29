@@ -112,7 +112,7 @@ when the operator granted spend.
 | Tool | Availability | What it does |
 | --- | --- | --- |
 | `project.snapshot` | always | Read the resolved config: whether a usable config is loaded (`configured`), source and target locales, format, path pattern, provider id, where the config and the glossary come from, `humanEdits` and `prune`. Call it first. With `configured: false` only `configProblem` and `nextStep` are set. |
-| `project.doctor` | always | Run the setup checks (config, format, provider, API key variable by name, network policy, source file, and informational ones): each with `status` (`pass`, `fail`, `skipped`), `detail`, and a `fix` when it failed; `ok` is false when any failed. Works without a usable config. No provider call, no key value read, nothing written. |
+| `project.doctor` | always | Run the setup checks (config, format, provider, API key variable by name, network policy, source file, the provider's locale support, and informational ones): each with `status` (`pass`, `fail`, `skipped`), `detail`, and a `fix` when it failed; `ok` is false when any failed. Works without a usable config. No provider call, no key value read, nothing written. |
 | `status.check` | always | Per target locale, how many keys are missing, stale or up to date, how many of them are `protected`, and who wrote the current values (`provenance`). Optional `locales`. |
 | `status.diff` | always | Per target locale, the exact keys the next run would add, re-translate or orphan, the `protected` ones it would leave for a person, and `changedOrigins`. Optional `locales`. |
 | `glossary.get` | always | Read every term (per-locale `targets`, `forbidden` renderings, and the shared `target`, note and part of speech when set), the `doNotTranslate` terms, the format `version` and where the glossary comes from. Optional `locale` adds `effective`, the terms a translation into that locale is held to. |
@@ -209,6 +209,12 @@ Read before you write, and diff before you spend.
   written), `translation.retranslateEntry` refuses them with `KEY_PROTECTED` or
   `KEY_PINNED`, and `translation.editEntry` refuses a pinned key with `KEY_PINNED`.
   Report them; do not route around them with an edit.
+- A configured locale DeepL or Google Cloud Translation does not list makes
+  `translation.translatePending`, `translation.estimate` and
+  `translation.retranslateEntry` fail with `LOCALE_UNSUPPORTED_BY_PROVIDER` before
+  anything is sent. Nothing ran and nothing was billed. Call `project.doctor` for
+  the `locales` check, then retry with the other locales in `locales` or ask the
+  human; never edit the config's `localeMap` to get past it.
 - A `maxTokens` ceiling withholds the requests that would cross it rather than
   sending them; their keys are listed under `budgetWithheld` and stay pending.
 - `translation.translatePending` reports each key the integrity gate refused
@@ -296,7 +302,8 @@ Read before you write, and diff before you spend.
 
 - [`verbatra mcp`](https://verbatra.kreitz-webdev.de/docs/cli/mcp)
 - [Connect an MCP client](https://verbatra.kreitz-webdev.de/docs/connect-an-mcp-client)
-- [Protecting human translations](https://verbatra.kreitz-webdev.de/docs/protecting-human-translations)
-- [Estimating cost](https://verbatra.kreitz-webdev.de/docs/estimating-cost)
-- [Recipes for agents and scripts](https://verbatra.kreitz-webdev.de/docs/agent-recipes)
+- [Error codes](https://verbatra.kreitz-webdev.de/docs/error-codes)
+- [Keep human translations](https://verbatra.kreitz-webdev.de/docs/protecting-human-translations)
+- [Estimate cost before a run](https://verbatra.kreitz-webdev.de/docs/estimating-cost)
+- [Script verbatra with JSON](https://verbatra.kreitz-webdev.de/docs/agent-recipes)
 - [Set up verbatra with an AI agent](https://verbatra.kreitz-webdev.de/docs/start-with-ai)
