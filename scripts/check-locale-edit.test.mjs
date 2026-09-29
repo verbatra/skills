@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,6 +7,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   configuredPattern,
   evaluate,
+  fileCheckArguments,
+  fileReportFor,
+  isUnsupportedOption,
   lastJsonLine,
   localCliEntry,
   localeOfSpelling,
@@ -73,16 +76,56 @@ const MULTI_LOCALE = envelope([
   localeReport("pt-BR", [finding("title", "markup")]),
 ]);
 
-function runRecorder(output) {
+const UNSUPPORTED = {
+  ok: false,
+  version: 1,
+  command: "check",
+  code: "USAGE_ERROR",
+  message: "error: unknown option '--file'",
+};
+
+function fileEnvelope(file, locale, findings, role = "target") {
+  const errors = findings.filter((entry) => entry.severity === "error").length;
+  return {
+    ok: true,
+    version: 1,
+    command: "check",
+    result: {
+      file,
+      role,
+      locales: [
+        {
+          locale,
+          incompletePlurals: [],
+          qa: { checked: 2, errors, warnings: findings.length - errors, findings },
+        },
+      ],
+      qa: { errors, warnings: findings.length - errors, invalidSourceKeys: [] },
+    },
+  };
+}
+
+function syntaxFinding() {
+  return {
+    severity: "error",
+    reason: "syntax",
+    code: "INVALID_JSON",
+    message: "The file is not valid JSON (line 3, column 3).",
+    line: 3,
+    column: 3,
+  };
+}
+
+function runRecorder(output, fileOutput = UNSUPPORTED) {
   const calls = [];
   return {
     calls,
     deps: {
       readPattern: () => PATTERN,
       findCli: () => "/cli.js",
-      run: (entry, projectDir) => {
-        calls.push({ entry, projectDir });
-        return JSON.stringify(output);
+      run: (entry, args, projectDir) => {
+        calls.push({ entry, projectDir, file: args.includes("--file") });
+        return JSON.stringify(args.includes("--file") ? fileOutput : output);
       },
     },
   };
@@ -126,11 +169,101 @@ describe("the hook skips edits that cannot be locale files without running anyth
   });
 });
 
+describe("the hook checks the edited file alone when the cli supports check --file", () => {
+  it("runs one file check and reports a broken placeholder in the edited file", () => {
+    const { calls, deps } = runRecorder(
+      MULTI_LOCALE,
+      fileEnvelope("locales/de.json", "de", [finding("greeting", "placeholder", ["-{name}"])]),
+    );
+    const report = evaluate(edit(resolve(PROJECT, "locales/de.json")), PROJECT, deps);
+    expect(calls).toEqual([{ entry: "/cli.js", projectDir: PROJECT, file: true }]);
+    expect(report).toContain("verbatra check --file found 1 problem(s) in locales/de.json");
+    expect(report).toContain("- de greeting: placeholder (-{name})");
+  });
+
+  it("reports a syntax error with its code and position", () => {
+    const { deps } = runRecorder(MULTI_LOCALE, fileEnvelope("locales/de.json", "de", [syntaxFinding()]));
+    const report = evaluate(edit(resolve(PROJECT, "locales/de.json")), PROJECT, deps);
+    expect(report).toContain(
+      "- de: syntax error [INVALID_JSON] The file is not valid JSON (line 3, column 3).",
+    );
+    expect(report).toContain("run verbatra check --file locales/de.json --json");
+  });
+
+  it("stays quiet for a clean file and for review warnings", () => {
+    const warning = { key: "title", severity: "warning", reason: "EQUALS_SOURCE" };
+    const { calls, deps } = runRecorder(MULTI_LOCALE, fileEnvelope("locales/de.json", "de", [warning]));
+    expect(evaluate(edit(resolve(PROJECT, "locales/de.json")), PROJECT, deps)).toBeUndefined();
+    expect(calls).toHaveLength(1);
+  });
+
+  it("stays quiet, without a project-wide run, when the path is not a locale file", () => {
+    const notLocale = {
+      ok: false,
+      version: 1,
+      command: "check",
+      code: "NOT_A_LOCALE_FILE",
+      message: "locales/it.json is not a locale file of this project.",
+    };
+    const { calls, deps } = runRecorder(MULTI_LOCALE, notLocale);
+    expect(evaluate(edit(resolve(PROJECT, "locales/it.json")), PROJECT, deps)).toBeUndefined();
+    expect(calls).toHaveLength(1);
+  });
+
+  it("passes the edited file's absolute path, resolved against the session's cwd", () => {
+    expect(fileCheckArguments(PROJECT, "/work/app/locales/de.json")).toEqual([
+      "check",
+      "--file",
+      "/work/app/locales/de.json",
+      "--severity",
+      "error",
+      "--json",
+      "--cwd",
+      PROJECT,
+    ]);
+    const seen = [];
+    const { deps } = runRecorder(MULTI_LOCALE, fileEnvelope("locales/fr.json", "fr", []));
+    const run = deps.run;
+    deps.run = (entry, args, projectDir) => {
+      seen.push(args);
+      return run(entry, args, projectDir);
+    };
+    evaluate(edit("locales/fr.json", PROJECT), PROJECT, deps);
+    expect(seen[0]?.[2]).toBe(resolve(PROJECT, "locales/fr.json"));
+  });
+
+  it("reads only a file-check envelope as a file report", () => {
+    expect(fileReportFor(MULTI_LOCALE)).toBeUndefined();
+    expect(fileReportFor(UNSUPPORTED)).toBeUndefined();
+    expect(fileReportFor(undefined)).toBeUndefined();
+    expect(isUnsupportedOption(UNSUPPORTED)).toBe(true);
+    expect(isUnsupportedOption(MULTI_LOCALE)).toBe(false);
+  });
+
+  it("caps a long file report", () => {
+    const findings = Array.from({ length: 12 }, (_, index) => finding(`k${index}`, "icu"));
+    expect(fileReportFor(fileEnvelope("locales/fr.json", "fr", findings))).toContain("- and 2 more");
+  });
+});
+
+describe("with a cli that predates check --file, the hook falls back to the project-wide check", () => {
+  it("runs the file check, then the project-wide check once the cli refuses --file", () => {
+    const { calls, deps } = runRecorder(MULTI_LOCALE);
+    evaluate(edit(resolve(PROJECT, "locales/de.json")), PROJECT, deps);
+    expect(calls).toEqual([
+      { entry: "/cli.js", projectDir: PROJECT, file: true },
+      { entry: "/cli.js", projectDir: PROJECT, file: false },
+    ]);
+  });
+});
+
 describe("the hook reports only the edited file's locale", () => {
   it("reports the German findings for an edit of the German file and nothing else", () => {
     const { calls, deps } = runRecorder(MULTI_LOCALE);
     const report = evaluate(edit(resolve(PROJECT, "locales/de.json")), PROJECT, deps);
-    expect(calls).toEqual([{ entry: "/cli.js", projectDir: PROJECT }]);
+    expect(calls.filter((call) => !call.file)).toEqual([
+      { entry: "/cli.js", projectDir: PROJECT, file: false },
+    ]);
     expect(report).toContain("found 1 translation(s)");
     expect(report).toContain("- de greeting: placeholder (-{name})");
     expect(report).not.toContain("farewell");
@@ -333,19 +466,30 @@ describe("the hook finds the pattern and the cli the project itself provides", (
 });
 
 describe("the hook process", () => {
-  function fakeCliProject(output) {
+  function fakeCliProject(output, fileOutput = UNSUPPORTED) {
     return tempProject({
       ".verbatrarc.json": JSON.stringify({ files: { pattern: PATTERN } }),
       "node_modules/@verbatra/cli/package.json": JSON.stringify({ bin: { verbatra: "./cli.mjs" } }),
       "node_modules/@verbatra/cli/cli.mjs": [
-        'import { writeFileSync } from "node:fs";',
-        'writeFileSync(new URL("./argv.json", import.meta.url), JSON.stringify(process.argv.slice(2)));',
-        `process.stdout.write(${JSON.stringify(`${JSON.stringify(output)}\n`)});`,
-        "process.exitCode = 1;",
+        'import { appendFileSync } from "node:fs";',
+        'const argv = process.argv.slice(2);',
+        'appendFileSync(new URL("./argv.ndjson", import.meta.url), `${JSON.stringify(argv)}\\n`);',
+        `const fileOutput = ${JSON.stringify(`${JSON.stringify(fileOutput)}\n`)};`,
+        `const output = ${JSON.stringify(`${JSON.stringify(output)}\n`)};`,
+        'process.stdout.write(argv.includes("--file") ? fileOutput : output);',
+        'process.exitCode = argv.includes("--file") && fileOutput.includes("USAGE_ERROR") ? 2 : 1;',
         "",
       ].join("\n"),
       "locales/de.json": "{}",
     });
+  }
+
+  function recordedArgv(root) {
+    const path = resolve(root, "node_modules/@verbatra/cli/argv.ndjson");
+    return readFileSync(path, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
   }
 
   function runHook(input, projectDir) {
@@ -356,11 +500,34 @@ describe("the hook process", () => {
     });
   }
 
-  it("exits 0 without a sound for an edit it does not care about", () => {
+  it("exits 0 without a sound, and without spawning the cli, for an edit it does not care about", () => {
     const root = fakeCliProject(MULTI_LOCALE);
-    const outcome = runHook(edit(resolve(root, "src/app.ts")), root);
-    expect(outcome.status).toBe(0);
-    expect(outcome.stderr).toBe("");
+    for (const path of ["src/app.ts", "package.json", "fixtures/de.json"]) {
+      const outcome = runHook(edit(resolve(root, path)), root);
+      expect(outcome.status).toBe(0);
+      expect(outcome.stderr).toBe("");
+    }
+    expect(existsSync(resolve(root, "node_modules/@verbatra/cli/argv.ndjson"))).toBe(false);
+  });
+
+  it("exits 2 with the file check's findings when the cli supports check --file", () => {
+    const root = fakeCliProject(
+      MULTI_LOCALE,
+      fileEnvelope("locales/de.json", "de", [finding("greeting", "placeholder", ["-{name}"])]),
+    );
+    const outcome = runHook(edit(resolve(root, "locales/de.json")), root);
+    expect(outcome.status).toBe(2);
+    expect(outcome.stderr).toContain("- de greeting: placeholder (-{name})");
+    expect(recordedArgv(root)).toEqual([
+      fileCheckArguments(root, resolve(root, "locales/de.json")),
+    ]);
+  });
+
+  it("exits 2 naming a syntax error of the edited file", () => {
+    const root = fakeCliProject(MULTI_LOCALE, fileEnvelope("locales/de.json", "de", [syntaxFinding()]));
+    const outcome = runHook(edit(resolve(root, "locales/de.json")), root);
+    expect(outcome.status).toBe(2);
+    expect(outcome.stderr).toContain("syntax error [INVALID_JSON]");
   });
 
   it("exits 2 with the edited locale's findings when the local check reports an integrity error", () => {
@@ -371,12 +538,13 @@ describe("the hook process", () => {
     expect(outcome.stderr).not.toContain("farewell");
   });
 
-  it("runs the key-free quality check against the project and nothing that could spend", () => {
+  it("falls back to the key-free project-wide check, and nothing that could spend", () => {
     const root = fakeCliProject(MULTI_LOCALE);
     runHook(edit(resolve(root, "locales/de.json")), root);
-    const argv = JSON.parse(
-      readFileSync(resolve(root, "node_modules/@verbatra/cli/argv.json"), "utf8"),
-    );
+    const runs = recordedArgv(root);
+    expect(runs).toHaveLength(2);
+    expect(runs[0]).toContain("--file");
+    const argv = runs[1];
     expect(argv[0]).toBe("check");
     expect(argv).toContain("--qa");
     expect(argv).toContain("--json");
