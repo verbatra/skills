@@ -97,9 +97,13 @@ What the plugin adds:
   `none` never lists those tools, whatever the option says.
 - **A locale-edit hook.** After Claude edits or writes a file that matches the
   config's `files.pattern`, the hook runs the project's own
-  `verbatra check --qa --severity error --json` and, when a translation in that
-  locale breaks a placeholder, inline markup or ICU, hands the findings back to
-  Claude so it fixes them before moving on. Lockfiles, CI files and tool configs are
+  `verbatra check --file <path> --severity error --json` on that one file and,
+  when the file no longer parses or a translation in it breaks a placeholder,
+  inline markup or ICU, hands the findings back to Claude so it fixes them before
+  moving on; a JSON or YAML syntax error comes with its line and column. With a
+  CLI that does not know `--file` yet, it falls back to
+  `verbatra check --qa --severity error --json` over the whole project and
+  reports the edited locale's findings. Lockfiles, CI files and tool configs are
   skipped without running anything. It uses only
   the `@verbatra/cli` installed in the project's `node_modules` (0.12.0 or later),
   never downloads anything, calls no provider, reads no key, and stays silent for

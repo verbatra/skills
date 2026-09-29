@@ -74,8 +74,8 @@ bills per key sent, so the cheap read-only question comes first.
   and `other`. That is a warning: it never changes `inSync` or the exit code, except
   that `--qa --strict` exits `1` on it. Add the missing forms by hand; do not
   delete the plural.
-  `--severity` or `--strict` without `--qa`, and `--strict` with `--severity error`,
-  fail with `INVALID_QA_OPTION`; a severity other than `error` or `warning` fails
+  `--severity` or `--strict` without `--qa` or `--file`, and `--strict` with
+  `--severity error`, fail with `INVALID_QA_OPTION`; a severity other than `error` or `warning` fails
   with `INVALID_SEVERITY`.
   Add `--require-reviewed` to gate on review decisions: it exits `1` while any
   value whose origin is `machine`, `memory`, `fuzzy` or `agent` is not approved in
@@ -86,6 +86,16 @@ bills per key sent, so the cheap read-only question comes first.
   `result.locales[].review.unreviewed`. It is keyless. Approving is a person's
   decision, made in Studio or relayed through an MCP client; never approve values
   to make the gate pass.
+- `verbatra check --file <path> --json` checks only the locale file you just
+  edited, reading no other locale: run it after every hand edit of a locale file.
+  `result` has the per-locale shape of `--qa` (`role` is `source`, `target` or
+  `catalogue`, `locales[].qa.findings`, totals in `result.qa`), and a file that no
+  longer parses is one finding with `reason` `syntax`, the adapter's `code`
+  (`INVALID_JSON`, `INVALID_YAML`, ...) and, for JSON and YAML, `line` and
+  `column`. The source locale file is checked for syntax only. An error finding
+  exits `1`, warnings only under `--strict`. A path that is no configured
+  locale's file exits `2` with `NOT_A_LOCALE_FILE`; `--locales` and
+  `--consistency` next to `--file` exit `2` with `INVALID_OPTION`.
 - `verbatra translate --dry-run --json` produces the full run summary a real run
   would produce. A dry run constructs no provider object at all, so it reads no
   key, opens no connection, and writes nothing. It is safe on a machine that has
@@ -376,6 +386,7 @@ exits `1`.
 | --- | --- |
 | `CONFIG_NOT_FOUND`, `CONFIG_INVALID` | No config, or one that does not validate (including a strict `provider` block, a glossary file, or an invalid network variable). Fix the config; nothing ran. |
 | `UNKNOWN_FORMAT`, `UNKNOWN_LOCALE`, `UNKNOWN_KEY` | A format, locale or key that is not configured or not in the source. Take the values from the config. |
+| `NOT_A_LOCALE_FILE` | `check --file` named a path that is no configured locale's file, or no file exists there. Pass the file `files.pattern` maps to a locale. |
 | `SOURCE_UNREADABLE`, `SOURCE_INVALID`, `SOURCE_UNWRITABLE` | The source locale file (or an import file) is missing, unparseable, or, for `extract`, unwritable. |
 | `LOCK_FILE_INVALID`, `PROVENANCE_FILE_INVALID`, `PROVENANCE_FILE_UNWRITABLE` | `verbatra.lock.json` or `verbatra.provenance.json` is corrupt, too large or from a newer verbatra. Restore it from version control; never delete it to get past this. |
 | `LOCK_CONTENDED` | Another process holds a write lock past the timeout, took over a lock this run held, or a lock was left by another machine or an older verbatra. See the lock paragraph under Exit codes. |
@@ -485,7 +496,7 @@ Branch on the failure `code`, all of them exit `2`:
 | --- | --- |
 | `MISSING_OPTIONS` | Pass the flags listed in `missing`, or `--yes` to take the defaults. `--yes` cannot fill a flag without a default: `openai-compatible` still needs `--base-url` and `--model`. |
 | `INVALID_PROVIDER`, `INVALID_FORMAT` | Pass one of the values listed in `candidates`. |
-| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible`, or `--cwd` names no existing directory. `doctor` raises it too, for `--locales` or `--live` together with `--literals`. |
+| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible`, or `--cwd` names no existing directory. `doctor` raises it too, for `--locales` or `--live` together with `--literals`, and `check` for an empty `--file` or `--file` with `--locales` or `--consistency`. |
 | `INIT_UNWRITABLE` | `init` could not write a file into its directory, for example a read-only one. The message names the file, the file-system code and any file already written; tell the human rather than retrying. |
 | `FORMAT_AMBIGUOUS`, `LAYOUT_AMBIGUOUS` | Several fit; ask the human which of `candidates` is right and pass `--format` or `--path`. |
 | `CONFIG_EXISTS` | A `verbatra.config.ts` is already there (reported before any missing or ambiguous answer); an identical one passes as `unchanged`, a different one is refused; never add `--force` unless the human asked to replace it. Another config file verbatra would read first (or a `verbatra` key in `package.json`) is refused even with `--force`. |

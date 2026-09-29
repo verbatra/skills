@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { checkArguments } from "../hooks/check-locale-edit.mjs";
+import { checkArguments, fileCheckArguments } from "../hooks/check-locale-edit.mjs";
 
 const SKILLS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -872,6 +872,14 @@ describe("the plugin hook runs a check the cli actually offers", () => {
   it("passes only options the check command registers", () => {
     const block = checkCommandBlock();
     for (const flag of checkArguments("/project").filter((arg) => arg.startsWith("--"))) {
+      expect(block).toMatch(new RegExp(`\\.option\\(\\s*"${flag}[ "]`));
+    }
+  });
+
+  it("passes only options the check command registers to the single-file check", () => {
+    const block = checkCommandBlock();
+    const args = fileCheckArguments("/project", "/project/locales/de.json");
+    for (const flag of args.filter((arg) => arg.startsWith("--"))) {
       expect(block).toMatch(new RegExp(`\\.option\\(\\s*"${flag}[ "]`));
     }
   });
