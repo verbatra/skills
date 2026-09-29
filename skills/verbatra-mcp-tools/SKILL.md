@@ -31,13 +31,16 @@ Code sets for a server it starts, and over its own working directory otherwise.
 Stdout carries nothing but MCP protocol messages. On stderr the server prints
 `verbatra MCP server running on stdio (project <dir>, spend tools on|off)` once it
 is ready (`spend tools off (provider none)` when spend was granted but the provider
-is `none`), and `verbatra MCP server stopped (client closed stdin)` or
+is `none`, `spend tools off until a config loads` when no usable config is
+loaded yet), and `verbatra MCP server stopped (client closed stdin)` or
 `(interrupted)` when it ends; `verbatra mcp --quiet` leaves both out. An interrupt
 stops either binary within a few seconds, even while a tool call waits on the
 provider, and releases any locale lock it holds; a second interrupt force-stops it
 with exit code `130` (`143` after SIGTERM for `verbatra-mcp`). Started by
 hand with a terminal on stdin, it adds how to add it to a client, how to inspect
-it, and how to stop it. `verbatra mcp --json` is refused with exit `2` and a
+it, and how to stop it. Without a usable config it first prints
+`Running without a usable project config: <CODE>: <message>` and, after the ready
+line, how to set the project up; each later config reload adds one line. `verbatra mcp --json` is refused with exit `2` and a
 `USAGE_ERROR` on stderr, since stdout belongs to the protocol.
 
 ## Non-negotiable rules
@@ -68,7 +71,7 @@ it, and how to stop it. `verbatra mcp --json` is refused with exit `2` and a
 
 ## The spend boundary
 
-The server registers sixteen tools but advertises only fourteen by default. The
+The server registers seventeen tools but advertises only fifteen by default. The
 tools that call a translation provider, `translation.retranslateEntry` and
 `translation.translatePending`, are filtered out of the tool list entirely unless
 the operator started the server with the spend capability granted
@@ -107,7 +110,8 @@ when the operator granted spend.
 
 | Tool | Availability | What it does |
 | --- | --- | --- |
-| `project.snapshot` | always | Read the resolved config: source and target locales, format, path pattern, provider id, where the config and the glossary come from, `humanEdits` and `prune`. Call it first. |
+| `project.snapshot` | always | Read the resolved config: whether a usable config is loaded (`configured`), source and target locales, format, path pattern, provider id, where the config and the glossary come from, `humanEdits` and `prune`. Call it first. With `configured: false` only `configProblem` and `nextStep` are set. |
+| `project.doctor` | always | Run the setup checks (config, format, provider, API key variable by name, network policy, source file, and informational ones): each with `status` (`pass`, `fail`, `skipped`), `detail`, and a `fix` when it failed; `ok` is false when any failed. Works without a usable config. No provider call, no key value read, nothing written. |
 | `status.check` | always | Per target locale, how many keys are missing, stale or up to date, how many of them are `protected`, and who wrote the current values (`provenance`). Optional `locales`. |
 | `status.diff` | always | Per target locale, the exact keys the next run would add, re-translate or orphan, the `protected` ones it would leave for a person, and `changedOrigins`. Optional `locales`. |
 | `glossary.get` | always | Read every term (per-locale `targets`, `forbidden` renderings, and the shared `target`, note and part of speech when set), the `doNotTranslate` terms, the format `version` and where the glossary comes from. Optional `locale` adds `effective`, the terms a translation into that locale is held to. |
@@ -133,12 +137,35 @@ next step, the text ends with a `Next step: ...` line, such as `Next step: Set G
 in the environment or in a .env file in the project directory.`: relay it to the user, and
 never ask for the key value it names.
 
+## Without a config
+
+The server starts even when the project has no config, or one that does not load.
+Then `project.snapshot` returns `configured: false`, a `configProblem` with the
+code (`CONFIG_NOT_FOUND` or `CONFIG_INVALID`) and message, and a `nextStep`. Every
+tool except `project.snapshot` and `project.doctor` stays listed but refuses with
+that code and a `Next step:` line, and the spend tools are not listed even with
+spend granted. Call `project.doctor`, relay each failed check's `fix` to the
+human (for a project without verbatra that is `npx verbatra init`), and do not
+retry other tools until the config is fixed.
+
+No restart is needed afterwards. Before each call the server checks the config
+file, the files the config search would try, and the glossary file for changes
+and loads the config again, so the next call after a fix works; call
+`project.snapshot` again to see the new config. A call already running keeps the
+config it started with. A config change never grants spend: the spend tools
+appear only when the operator granted it at startup and the new config names a
+provider. When the tool list changes the server sends
+`notifications/tools/list_changed`; list the tools again. Only the config file
+itself is checked, so an edit to a module a JavaScript or TypeScript config
+imports needs a server restart.
+
 ## How to work
 
 Read before you write, and diff before you spend.
 
 1. `project.snapshot` to learn what the project actually is. Everything else takes
-   its locale codes and key names from there.
+   its locale codes and key names from there. If it reports `configured: false`,
+   call `project.doctor` and follow its fixes first.
 2. `status.check` for counts, or `status.diff` for the exact key names. Both are
    read-only and call no provider. `status.diff` is what you show a human before
    asking for permission to spend.
