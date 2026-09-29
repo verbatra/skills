@@ -709,12 +709,18 @@ describe("prose counts are derived, not remembered", () => {
   it("states both surface sizes and the size of the gap between them", () => {
     const stdio = mcpRegistry().all;
     const studio = studioRpcMethods();
+    const studioOnly = studio.filter((method) => !stdio.includes(method));
+    const stdioOnly = stdio.filter((name) => !studio.includes(name));
     const skill = readSkillFile(STUDIO_SKILL);
     expect(skill).toContain(
       `The stdio MCP server has\n${spelled(stdio.length)} tools with dotted names`,
     );
     expect(skill).toContain(`Studio has ${spelled(studio.length)}`);
-    expect(skill).toContain(`adds ${spelled(studio.length - stdio.length)} the stdio server`);
+    expect(skill).toContain(`adds ${spelled(studioOnly.length)} the stdio server`);
+    expect(skill).toContain(`lacks ${spelled(stdioOnly.length)} the stdio server has`);
+    for (const name of stdioOnly) {
+      expect(skill).toContain(`\`${name}\``);
+    }
   });
 
   it("names every spend-filtered stdio tool where it explains the boundary", () => {
