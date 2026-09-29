@@ -120,7 +120,25 @@ function patternInText(text) {
   return match === null ? undefined : match[2];
 }
 
+function manifestConfig(projectDir, read, exists) {
+  const manifest = resolve(projectDir, "package.json");
+  if (!exists(manifest)) {
+    return undefined;
+  }
+  try {
+    const config = JSON.parse(read(manifest, "utf8"))?.verbatra;
+    return config === undefined || config === null ? undefined : config;
+  } catch {
+    return undefined;
+  }
+}
+
 export function configuredPattern(projectDir, read = readFileSync, exists = existsSync) {
+  const fromManifest = manifestConfig(projectDir, read, exists);
+  if (fromManifest !== undefined) {
+    const pattern = fromManifest?.files?.pattern;
+    return typeof pattern === "string" ? pattern : undefined;
+  }
   for (const name of CONFIG_FILES) {
     const path = resolve(projectDir, name);
     if (exists(path)) {
@@ -131,16 +149,7 @@ export function configuredPattern(projectDir, read = readFileSync, exists = exis
       }
     }
   }
-  const manifest = resolve(projectDir, "package.json");
-  if (!exists(manifest)) {
-    return undefined;
-  }
-  try {
-    const pattern = JSON.parse(read(manifest, "utf8"))?.verbatra?.files?.pattern;
-    return typeof pattern === "string" ? pattern : undefined;
-  } catch {
-    return undefined;
-  }
+  return undefined;
 }
 
 function escapeRegExp(text) {
