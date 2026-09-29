@@ -135,6 +135,7 @@ Read this table before running anything unattended.
 | `tmx` | no | yes on import, the translation memory; yes on export, the TMX file | no |
 | `check` | no | no | no |
 | `diff` | no | no | no |
+| `report` | no | no | no |
 | `pseudo` | no | yes, a pseudolocale under the out directory | no |
 | `types` | no | yes, the generated declaration, unless `--check` | no |
 | `doctor` | no | no | no, it never reads a key value; `--literals` does not even check for one; `--live` sends the key to fetch the provider's language list, which uses no translation quota |
@@ -175,6 +176,22 @@ units were `added`, `unchanged`, `kept`, `overwritten` and repeated, counts what
 the gate `rejected` by reason, and lists each refused unit as
 `unit N: reason (details)` (in `--json`, `result.locales[].refusals` with `unit`,
 `reason` and `details`), `N` being the unit's position in the file.
+
+`verbatra report provenance --json` lists, per target locale, every key's origin
+(`machine`, `memory`, `fuzzy` and `agent` are machine-written; `human`, `import`,
+`external`, `unrecorded`, `unknown`), its review state, and a `bucket`
+(`machine-unreviewed`, `machine-reviewed`, `human`, `import`, `external`,
+`unrecorded`, `unknown`) with per-bucket `counts`, stamped with `generatedAt`,
+`toolVersion` and `sourceLocale`. It is read-only and keyless; its only argument
+is the report name, and `provenance` is the only one. Exit `1` with
+`result.available: false` means `verbatra.provenance.json` is corrupt or from a
+newer verbatra, not an empty report. The report is supporting evidence of which
+text was machine-generated, never legal advice: do not tell the human that a
+project is compliant with anything because of it. XLIFF and TMX exports carry
+the same marking (`state-qualifier="mt-suggestion"` in XLIFF 1.2, `origin` and
+`review-state` metadata in XLIFF 2.0, `x-origin` and `x-review` properties in
+TMX), and imports ignore it; `result.provenanceMarkers: "unavailable"` on an
+export means no marker could be written.
 
 Three commands read application source through the config's `extract` block, and
 none of them calls a provider: `extract` adds keys found at translation call
@@ -251,7 +268,7 @@ run" with "did the work land".
 | Code | Meaning |
 | --- | --- |
 | `0` | Success: nothing outstanding, or everything requested completed. |
-| `1` | It ran, the result is not clean: a locale failed or is partial, `check` found drift or, with `--qa`, an integrity error (a review warning or an incomplete plural too under `--strict`), or, with `--require-reviewed`, an unapproved machine-written value, `diff` found pending keys or, with `--unused`, a complete scan found unused source keys, `doctor` found a failed check or, with `--literals`, an untranslated literal or an unreadable source file, `types --check` found the committed declaration out of date. |
+| `1` | It ran, the result is not clean: a locale failed or is partial, `check` found drift or, with `--qa`, an integrity error (a review warning or an incomplete plural too under `--strict`), or, with `--require-reviewed`, an unapproved machine-written value, `diff` found pending keys or, with `--unused`, a complete scan found unused source keys, `report provenance` could not read the provenance file, `doctor` found a failed check or, with `--literals`, an untranslated literal or an unreadable source file, `types --check` found the committed declaration out of date. |
 | `2` | It could not run: bad config, unreadable source, corrupt lock file, a network policy that refuses the provider's host, a locale the provider does not support, or a usage error such as an unknown `--locales` value. `init` also exits `2` when a flag it needs is missing, when several formats or file patterns fit, or when it refuses to replace an existing config. |
 | `3` | `translate` in a human-only project (provider `none`) finished cleanly but left keys that need a human translation. |
 | `130` | `watch`, `studio` or `mcp` was force-stopped by a second interrupt (all three return the same stoppable session), or `translate` or `import` was interrupted with SIGINT. |
