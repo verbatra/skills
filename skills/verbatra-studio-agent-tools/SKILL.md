@@ -181,6 +181,10 @@ instead of retrying at once, and do not loop on it.
   pending, and a run that fails partway can leave some locales written and others
   untouched. Only one run may be in flight, so a concurrent second call is refused
   rather than queued.
+- A configured locale DeepL or Google Cloud Translation does not list makes the
+  estimate and both spend-gated tools fail with `LOCALE_UNSUPPORTED_BY_PROVIDER`
+  before anything is sent or billed. Retry with the other locales in `locales`, or
+  ask the human; never change the config's `localeMap` to get past it.
 - `verbatra_usage_summary` reads a snapshot only a real translation run
   refreshes; an unavailable result means no run has ever recorded one, not zero
   usage. `verbatra_review_queue` is built from the committed files, so every
@@ -259,6 +263,8 @@ instead of retrying at once, and do not loop on it.
 
 ## Reference
 
-- [Operate Studio with a browser agent](https://verbatra.kreitz-webdev.de/docs/agent-tools-in-studio)
-- [Verbatra Studio](https://verbatra.kreitz-webdev.de/docs/cli/studio)
+- [Drive Studio with a browser agent](https://verbatra.kreitz-webdev.de/docs/agent-tools-in-studio)
+- [`verbatra studio`](https://verbatra.kreitz-webdev.de/docs/cli/studio)
+- [Review in Studio](https://verbatra.kreitz-webdev.de/docs/review-in-studio)
+- [Error codes](https://verbatra.kreitz-webdev.de/docs/error-codes)
 - [Set up verbatra with an AI agent](https://verbatra.kreitz-webdev.de/docs/start-with-ai)
