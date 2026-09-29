@@ -95,8 +95,9 @@ bills per key sent, so the cheap read-only question comes first.
   (`INVALID_JSON`, `INVALID_YAML`, ...) and, for JSON and YAML, `line` and
   `column`. The source locale file is checked for syntax only. An error finding
   exits `1`, warnings only under `--strict`. A path that is no configured
-  locale's file exits `2` with `NOT_A_LOCALE_FILE`; `--locales` and
-  `--consistency` next to `--file` exit `2` with `INVALID_OPTION`.
+  locale's file exits `2` with `NOT_A_LOCALE_FILE`; `--locales`,
+  `--consistency` or `--require-reviewed` next to `--file` exit `2` with
+  `INVALID_OPTION`.
 - `verbatra translate --dry-run --json` produces the full run summary a real run
   would produce. A dry run constructs no provider object at all, so it reads no
   key, opens no connection, and writes nothing. It is safe on a machine that has
@@ -397,21 +398,26 @@ What a human-readable run prints:
   `studio --verbose` also prints one `METHOD path status` line per request, with
   the token masked.
 - `mcp` prints `verbatra MCP server running on stdio (project <dir>, spend tools
-  on|off|off (provider none))` once it is ready and `verbatra MCP server stopped (client closed stdin)`
-  or `(interrupted)` at the end. Started by hand in a terminal, it also prints how
+  on|off|off (provider none)|off until a config loads)` once it is ready and
+  `verbatra MCP server stopped (client closed stdin)` or `(interrupted)` at the
+  end. Without a usable config it still starts, says that only `project.snapshot`
+  and `project.doctor` work until one loads, and picks up a fixed config on the
+  next call with no restart. Started by hand in a terminal, it also prints how
   to add it to a client, how to inspect it, and `Press Ctrl-C to stop.`
 - `watch` and `studio` print `press Ctrl-C to stop` when stdin is a terminal.
 
 ## Error and notice codes
 
-A whole-command failure exits `2` with one of these as `code`. The same codes, and
+A whole-command failure exits `2` with one of these as `code`. Each code has an
+entry with its next step at `https://verbatra.kreitz-webdev.de/docs/error-codes#<code>`,
+the code in lower case, such as `#config_not_found`. The same codes, and
 a provider's own error codes, appear on a failed locale as
 `result.locales[].error.code`, where the run went on with the other locales and
 exits `1`.
 
 | Code | What it means for you |
 | --- | --- |
-| `CONFIG_NOT_FOUND`, `CONFIG_INVALID` | No config, or one that does not validate (including a strict `provider` block, a glossary file, or an invalid network variable). Fix the config; nothing ran. |
+| `CONFIG_NOT_FOUND`, `CONFIG_INVALID` | No config, or one that does not validate (including a strict `provider` block, a glossary file, or an invalid network variable). Fix the config; nothing ran. A `causeCode` such as `MODULE_NOT_FOUND` means an import in the config file could not be resolved: install that package rather than editing config fields. A `.cjs` config can `require("@verbatra/cli")`. |
 | `UNKNOWN_FORMAT`, `UNKNOWN_LOCALE`, `UNKNOWN_KEY` | A format, locale or key that is not configured or not in the source. Take the values from the config. |
 | `NOT_A_LOCALE_FILE` | `check --file` named a path that is no configured locale's file, or no file exists there. Pass the file `files.pattern` maps to a locale. |
 | `SOURCE_UNREADABLE`, `SOURCE_INVALID`, `SOURCE_UNWRITABLE` | The source locale file (or an import file) is missing, unparseable, or, for `extract`, unwritable. |
@@ -426,7 +432,7 @@ exits `1`.
 | `LOCALE_UNSUPPORTED_BY_PROVIDER` | DeepL or Google Cloud Translation does not list a configured locale, so the whole run was refused before anything started or was spent. Run `doctor --locales`, then drop the locale with `--locales` or ask the human. |
 | `GLOSSARY_NOT_FILE_BACKED`, `GLOSSARY_UNWRITABLE` | The glossary is inline or absent, or its file or lock could not be written. |
 | `CONCURRENCY_INVALID`, `CONCURRENCY_BUDGET_CONFLICT`, `MAX_TOKENS_INVALID` | Bad `--concurrency` or `--max-tokens`, or a concurrency above `1` together with a token budget. |
-| `LOCALE_LAYOUT_INVALID`, `LOCALE_PATH_COLLISION` | `files.pattern` and `files.localeStyle` do not fit, or two locales map to one file. |
+| `LOCALE_LAYOUT_INVALID`, `LOCALE_PATH_COLLISION` | `files.pattern` and `files.localeStyle` do not fit, a `gettext-po` locale has a script with no gettext modifier, or two locales map to one file. |
 | `TARGET_UNWRITABLE`, `TYPES_UNWRITABLE`, `TMX_UNWRITABLE`, `EXPORT_UNWRITABLE` | The file the command writes could not be written. |
 | `PSEUDO_OUTPUT_CONFLICT`, `TYPES_OUTPUT_CONFLICT`, `TMX_OUTPUT_CONFLICT`, `EXPORT_OUTPUT_CONFLICT` | The output path would overwrite a locale, lock, provenance, cache, config or glossary file, or leaves the working directory. Pick another path. |
 | `EXTRACT_NOT_CONFIGURED`, `EXTRACT_FS_UNSUPPORTED` | `extract` needs an `extract` block in the config. |
@@ -478,6 +484,12 @@ adapter.
 | `ini` | Classic INI; a key under `[section]` is addressed as `section.key` | `locales/{locale}.ini` |
 | `resx` | .NET XML resources; typed and designer entries are preserved untouched | `Resources/Strings.{locale}.resx` |
 
+Under the `posix` style, `gettext-po` spells a locale the gettext way: a script
+the region implies is dropped (`zh-Hant-TW` is `zh_TW`), and `Latn`, `Cyrl` and
+`Deva` become `@latin`, `@cyrillic` and `@devanagari` (`sr-Latn-RS` is
+`sr_RS@latin`). Configure the BCP 47 code (`sr-Latn`), never `sr@latin`; every
+other format keeps `sr_Latn`.
+
 Plain JSON with no matching library: pick by placeholder syntax. `{{name}}` means
 `i18next-json`, single-brace `{name}` means `vue-i18n-json`.
 
@@ -525,7 +537,7 @@ Branch on the failure `code`, all of them exit `2`:
 | --- | --- |
 | `MISSING_OPTIONS` | Pass the flags listed in `missing`, or `--yes` to take the defaults. `--yes` cannot fill a flag without a default: `openai-compatible` still needs `--base-url` and `--model`, and `libretranslate` needs `--base-url`. |
 | `INVALID_PROVIDER`, `INVALID_FORMAT` | Pass one of the values listed in `candidates`. |
-| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible` or `libretranslate`, or `--cwd` names no existing directory. `doctor` raises it too, for `--locales` or `--live` together with `--literals`, and `check` for an empty `--file` or `--file` with `--locales` or `--consistency`. |
+| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible` or `libretranslate`, or `--cwd` names no existing directory. `doctor` raises it too, for `--locales` or `--live` together with `--literals`, and `check` for an empty `--file` or `--file` with `--locales`, `--consistency` or `--require-reviewed`. |
 | `INIT_UNWRITABLE` | `init` could not write a file into its directory, for example a read-only one. The message names the file, the file-system code and any file already written; tell the human rather than retrying. |
 | `FORMAT_AMBIGUOUS`, `LAYOUT_AMBIGUOUS` | Several fit; ask the human which of `candidates` is right and pass `--format` or `--path`. |
 | `CONFIG_EXISTS` | A `verbatra.config.ts` is already there (reported before any missing or ambiguous answer); an identical one passes as `unchanged`, a different one is refused; never add `--force` unless the human asked to replace it. Another config file verbatra would read first (or a `verbatra` key in `package.json`) is refused even with `--force`. |
@@ -625,8 +637,9 @@ reports its stale keys and exits `1` before the next `translate`.
 ## A safe unattended shape
 
 1. `verbatra doctor` first. It is the cheapest preflight: it validates the config,
-   the format, the provider id, the key variable name, the network policy and the
-   source file, with no network call and no key read.
+   the format, the provider id, the key variable name, the network policy, the
+   source file and the provider's locale support, with no network call and no key
+   read. A failed check carries `fix`, the step to take.
 2. `verbatra diff --json` to learn the exact pending keys. Exit `0` means stop
    here, there is nothing to do and nothing to spend.
 3. `verbatra translate --estimate --json` for what the run would send and cost.
@@ -645,11 +658,13 @@ Commit `verbatra.config.ts`, `.env.example`, `verbatra.lock.json`,
 
 ## Reference
 
-- [CI and exit codes](https://verbatra.kreitz-webdev.de/docs/ci-and-exit-codes)
-- [Recipes for agents and scripts](https://verbatra.kreitz-webdev.de/docs/agent-recipes)
-- [The lock file](https://verbatra.kreitz-webdev.de/docs/the-lock-file)
+- [Exit codes and JSON output](https://verbatra.kreitz-webdev.de/docs/cli/output)
+- [Error codes](https://verbatra.kreitz-webdev.de/docs/error-codes)
+- [Run verbatra in CI](https://verbatra.kreitz-webdev.de/docs/ci-and-exit-codes)
+- [Script verbatra with JSON](https://verbatra.kreitz-webdev.de/docs/agent-recipes)
+- [The lock file and provenance](https://verbatra.kreitz-webdev.de/docs/the-lock-file)
 - [Providers](https://verbatra.kreitz-webdev.de/docs/providers)
-- [Protecting human translations](https://verbatra.kreitz-webdev.de/docs/protecting-human-translations)
-- [Human-only workflow](https://verbatra.kreitz-webdev.de/docs/human-only-workflow)
-- [Estimating cost](https://verbatra.kreitz-webdev.de/docs/estimating-cost)
-- [Network policy](https://verbatra.kreitz-webdev.de/docs/network-policy)
+- [Keep human translations](https://verbatra.kreitz-webdev.de/docs/protecting-human-translations)
+- [Run without machine translation](https://verbatra.kreitz-webdev.de/docs/human-only-workflow)
+- [Estimate cost before a run](https://verbatra.kreitz-webdev.de/docs/estimating-cost)
+- [Restrict network access](https://verbatra.kreitz-webdev.de/docs/network-policy)
