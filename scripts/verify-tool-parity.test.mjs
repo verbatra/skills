@@ -29,8 +29,9 @@ const SPEND_GATED_CELL = "spend gated";
 const SHARED_SAFETY_BLOCK = [
   "1. Keys live in environment variables only. verbatra reads `ANTHROPIC_API_KEY`,",
   "   `OPENAI_API_KEY`, `GEMINI_API_KEY`, `DEEPL_API_KEY`,",
-  "   `GOOGLE_TRANSLATE_API_KEY`, or `OPENAI_COMPATIBLE_API_KEY` from the process",
-  "   environment. There is no key argument and no key field in the config file.",
+  "   `GOOGLE_TRANSLATE_API_KEY`, `OPENAI_COMPATIBLE_API_KEY`, or",
+  "   `LIBRETRANSLATE_API_KEY` from the process environment. There is no key",
+  "   argument and no key field in the config file.",
   "   Never write a key value into a file, a command line, a commit, or your own",
   "   output. Name the variable and let the human fill it in.",
   "2. Ask before spending. A real translate run bills the provider the moment it",
@@ -188,6 +189,11 @@ function providerEnvVars() {
     throw new Error("OPENAI_COMPATIBLE_ENV_VAR could not be located beside PROVIDER_ENV");
   }
   byId.set("openai-compatible", compatible[1]);
+  const libreTranslate = /LIBRETRANSLATE_ENV_VAR = "([A-Z_]+)"/.exec(source);
+  if (libreTranslate === null) {
+    throw new Error("LIBRETRANSLATE_ENV_VAR could not be located beside PROVIDER_ENV");
+  }
+  byId.set("libretranslate", libreTranslate[1]);
   return byId;
 }
 
