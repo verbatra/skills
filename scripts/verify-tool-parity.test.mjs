@@ -479,6 +479,16 @@ const NUMBER_WORDS = [
   "eighteen",
   "nineteen",
   "twenty",
+  "twenty-one",
+  "twenty-two",
+  "twenty-three",
+  "twenty-four",
+  "twenty-five",
+  "twenty-six",
+  "twenty-seven",
+  "twenty-eight",
+  "twenty-nine",
+  "thirty",
 ];
 
 function spelled(count) {
@@ -487,6 +497,10 @@ function spelled(count) {
     throw new Error(`no spelled form for ${count}; extend NUMBER_WORDS`);
   }
   return word;
+}
+
+function spelledOrNone(count) {
+  return count === 0 ? "none" : spelled(count);
 }
 
 function rowsByAvailability(rows, availabilityIndex) {
@@ -677,14 +691,15 @@ describe("the studio skill enumerates the real webmcp tool surface", () => {
 });
 
 describe("the two agent surfaces stay distinguishable", () => {
-  it("gives studio exactly the four methods the stdio registry does not have", () => {
+  it("gives studio no method the stdio registry does not have", () => {
     const stdio = new Set(mcpRegistry().all);
-    expect(studioRpcMethods().filter((method) => !stdio.has(method))).toEqual([
-      "history.list",
-      "key.context",
-      "locale.integrity",
-      "locale.values",
-    ]);
+    expect(studioRpcMethods().filter((method) => !stdio.has(method))).toEqual([]);
+  });
+
+  it("gives the stdio registry exactly the two tools studio does not have", () => {
+    const studio = new Set(studioRpcMethods());
+    const stdioOnly = mcpRegistry().all.filter((name) => !studio.has(name));
+    expect(stdioOnly).toEqual(["project.doctor", "report.provenance"]);
   });
 
   it("keeps the studio-only tools out of the stdio skill", () => {
@@ -722,8 +737,8 @@ describe("prose counts are derived, not remembered", () => {
       `The stdio MCP server has\n${spelled(stdio.length)} tools with dotted names`,
     );
     expect(skill).toContain(`Studio has ${spelled(studio.length)}`);
-    expect(skill).toContain(`adds ${spelled(studioOnly.length)} the stdio server`);
-    expect(skill).toContain(`lacks ${spelled(stdioOnly.length)} the stdio server has`);
+    expect(skill).toContain(`adds ${spelledOrNone(studioOnly.length)} the stdio server`);
+    expect(skill).toContain(`lacks ${spelledOrNone(stdioOnly.length)} the stdio server has`);
     for (const name of stdioOnly) {
       expect(skill).toContain(`\`${name}\``);
     }
@@ -755,12 +770,17 @@ describe("prose counts are derived, not remembered", () => {
 
   it("names every studio-only tool where it claims the surfaces differ", () => {
     const stdio = new Set(mcpRegistry().all);
+    const studioOnly = studioRpcMethods().filter((candidate) => !stdio.has(candidate));
     const skill = readSkillFile(STUDIO_SKILL);
     const claim = "are what this surface adds";
     const end = skill.indexOf(claim);
+    if (studioOnly.length === 0) {
+      expect(end).toBe(-1);
+      return;
+    }
     expect(end).toBeGreaterThan(-1);
     const sentence = skill.slice(skill.lastIndexOf("\n\n", end), end + claim.length);
-    for (const method of studioRpcMethods().filter((candidate) => !stdio.has(candidate))) {
+    for (const method of studioOnly) {
       expect(sentence).toContain(`\`${studioToolName(method)}\``);
     }
   });
