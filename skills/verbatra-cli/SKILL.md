@@ -129,8 +129,9 @@ a target locale, `verbatra doctor --locales` shows what the provider supports fo
 every target locale: the code it is sent as, `supported`, `unverified` or
 `unsupported`, and whether a glossary and a formality setting can be applied.
 It is judged against a dated table verbatra ships, calls no provider and needs no
-key; `--live` checks against the provider's current list instead, when its key is
-set. `translate` refuses an `unsupported` locale up front with
+key; `--live` checks a machine-translation provider against its current list
+instead (DeepL and Google only when their key is set), and sends nothing for an LLM
+provider or `none`. `translate` refuses an `unsupported` locale up front with
 `LOCALE_UNSUPPORTED_BY_PROVIDER` (exit `2`, nothing started, nothing spent), so
 drop it with `--locales` or ask the human; never map it in `localeMap` on your own
 to get past the refusal.
@@ -153,7 +154,7 @@ Read this table before running anything unattended.
 | `report` | no | no | no |
 | `pseudo` | no | yes, a pseudolocale under the out directory | no |
 | `types` | no | yes, the generated declaration, unless `--check` | no |
-| `doctor` | no | no | no, it never reads a key value; `--literals` does not even check for one; `--live` sends the key to fetch the provider's language list, which uses no translation quota |
+| `doctor` | no | no | no, it never reads a key value; `--literals` does not even check for one; `--live` fetches a machine-translation provider's language list, sending the key DeepL and Google need, which uses no translation quota |
 | `studio` | only with `--allow-spend` or `VERBATRA_STUDIO_ALLOW_SPEND` | yes, through in-place edits | only when spend is granted |
 | `mcp` | only with `--allow-spend` or `VERBATRA_MCP_ALLOW_SPEND` (also read from `.env.local` and `.env`) | yes, through in-place edits | only when spend is granted |
 | `init` | no | yes, the config, the env example unless the provider is `none`, and `.gitignore`; with `--agent` also `AGENTS.md` or `CLAUDE.md` and `.mcp.json` | no |
@@ -308,9 +309,9 @@ run" with "did the work land".
 | Code | Meaning |
 | --- | --- |
 | `0` | Success: nothing outstanding, or everything requested completed. |
-| `1` | It ran, the result is not clean: a locale failed or is partial, `check` found drift or, with `--qa`, an integrity error (a review warning or an incomplete plural too under `--strict`), with `--require-reviewed`, an unapproved machine-written value, or, with `--sensitive`, sensitive content, `diff` found pending keys or, with `--unused`, a complete scan found unused source keys, `report provenance` could not read the provenance file, `doctor` found a failed check or, with `--literals`, an untranslated literal or an unreadable source file, `types --check` found the committed declaration out of date. |
+| `1` | It ran, the result is not clean: a locale failed or is partial, `check` found drift or, with `--qa`, an integrity error (a review warning or an incomplete plural too under `--strict`), with `--require-reviewed`, an unapproved machine-written value, or, with `--sensitive`, sensitive content, `check --file` found a syntax or integrity error (a review warning or an incomplete plural too under `--strict`), `diff` found pending keys or, with `--unused`, a complete scan found unused source keys, `report provenance` could not read the provenance file, `doctor` found a failed check or, with `--literals`, an untranslated literal or an unreadable source file, `types --check` found the committed declaration out of date. |
 | `2` | It could not run: bad config, unreadable source, corrupt lock file, a network policy that refuses the provider's host, a locale the provider does not support, `mcp --redact-values` with a `@verbatra/mcp` too old to redact, or a usage error such as an unknown `--locales` value. `init` also exits `2` when a flag it needs is missing, when several formats or file patterns fit, or when it refuses to replace an existing config. |
-| `3` | `translate` in a human-only project (provider `none`) finished cleanly but left keys that need a human translation. |
+| `3` | `translate` (a dry run and `--estimate` included) in a human-only project (provider `none`) finished cleanly but left keys that need a human translation. |
 | `130` | `watch`, `studio` or `mcp` was force-stopped by a second interrupt (all three return the same stoppable session), or `translate` or `import` was interrupted with SIGINT. |
 | `143` | `translate` or `import` was stopped with SIGTERM. |
 
@@ -379,8 +380,8 @@ would have been accepted and `missing` the flags that still have to be passed, s
 an agent can retry with a flag instead of parsing prose. `causeCode` names the
 coded error a failure wraps, such as `MISSING_API_KEY` under
 `PROVIDER_CONSTRUCTION_FAILED`, and the stderr line ends with `(cause: <code>)`. `hint`, when
-present, is one imperative next step, such as `Set GEMINI_API_KEY in the environment or in a
-.env file in the project directory.` or, for `USAGE_ERROR`, `` Run `verbatra check --help` ... ``:
+present, is one imperative next step, such as `Set GEMINI_API_KEY in the environment, or, with the CLI,
+in a .env file in the project directory.` or, for `USAGE_ERROR`, `` Run `verbatra check --help` ... ``:
 act on it instead of parsing `message`. It names a variable, never a key value, so never ask the
 user for the value it names; ask them to set the variable. Without `--json` the same text follows
 the error line on stderr as `next: ...`. Progress records and the
@@ -480,7 +481,7 @@ exits `1`.
 | `EXTRACT_NOT_CONFIGURED`, `EXTRACT_FS_UNSUPPORTED` | `extract` needs an `extract` block in the config. |
 | `REVIEW_VALUE_CHANGED`, `REVIEW_SOURCE_CHANGED`, `REVIEW_REJECT_UNSUPPORTED`, `REVIEW_RESTORE_FAILED`, `REVIEWER_INVALID` | Review decisions, which only a person makes. `xliff` cannot reject a value, since a unit without a target reads as its source; every other format, `arb` included, can. |
 | `LOCALE_FAILED`, `CLI_ERROR` | Fallbacks for a failed locale, or a command failure, that carried no code of its own. |
-| `USAGE_ERROR`, `INVALID_LOCALES`, `INVALID_LOCALE`, `INVALID_OUT`, `INVALID_FORMAT`, `INVALID_DIRECTION`, `INVALID_QA_OPTION`, `INVALID_SEVERITY`, `INVALID_CONCURRENCY`, `INVALID_MAX_TOKENS`, `INVALID_LOCK_TIMEOUT`, `INVALID_DEBOUNCE`, `INVALID_PORT` | A flag value the CLI refused before anything ran. |
+| `USAGE_ERROR`, `INVALID_LOCALES`, `INVALID_LOCALE`, `INVALID_OUT`, `INVALID_FORMAT`, `INVALID_DIRECTION`, `INVALID_QA_OPTION`, `INVALID_SEVERITY`, `INVALID_CONCURRENCY`, `INVALID_MAX_TOKENS`, `INVALID_LOCK_TIMEOUT`, `INVALID_DEBOUNCE`, `INVALID_PORT` | A flag value the CLI refused before anything ran; for `init`, `INVALID_LOCALE` and `INVALID_LOCALES` come only from an interactive answer. |
 
 The codes the CLI raises itself, as opposed to the ones it passes through from the
 SDK or a provider, are exported as `CLI_ERROR_CODES` from `@verbatra/cli`: the
@@ -587,7 +588,7 @@ Branch on the failure `code`, all of them exit `2`:
 | `INIT_UNWRITABLE` | `init` could not write a file into its directory, for example a read-only one. The message names the file, the file-system code and any file already written; tell the human rather than retrying. |
 | `FORMAT_AMBIGUOUS`, `LAYOUT_AMBIGUOUS` | Several fit; ask the human which of `candidates` is right and pass `--format` or `--path`. |
 | `CONFIG_EXISTS` | A `verbatra.config.ts` is already there (reported before any missing or ambiguous answer); an identical one passes as `unchanged`, a different one is refused; never add `--force` unless the human asked to replace it. Another config file verbatra would read first (or a `verbatra` key in `package.json`) is refused even with `--force`. |
-| `CONFIG_INVALID` | The answers do not form a valid config; the message says which field. |
+| `CONFIG_INVALID` | The answers do not form a valid config, including a `--source` or `--targets` locale that is not a BCP 47 code; the message says which field. |
 | `AGENT_FILE_INVALID` | With `--agent`: `.mcp.json` is not a JSON object with an `mcpServers` object, or the instruction file has unpaired or repeated verbatra markers. Nothing was written; show the human the message and let them fix the file. |
 
 Re-running `init` with the same answers is safe: an identical
@@ -616,7 +617,7 @@ legitimately need no key at all. The three machine-translation providers,
 strings through numbered markers and restore them. Each withholds a value it
 cannot mask safely, such as one still carrying ICU syntax or, for DeepL and Google,
 markup or a comparison sign beside a placeholder (Google also a line break, tab or
-double space), and drops a result whose markers came back lost or changed; those
+double space in a value with placeholders), and drops a result whose markers came back lost or changed; those
 keys land under `providerFailures` with the notice `PLACEHOLDER_UNSUPPORTED` and
 the locale ends `partial` or `failed`. Translate them by hand or with an LLM provider.
 `libretranslate` locales stay `unverified` until
