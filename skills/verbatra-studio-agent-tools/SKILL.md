@@ -258,7 +258,10 @@ in an `entries` list. Do not carry a result shape from one surface to the other.
   list. `null` clears `translation`, `forbidden`, `note` or `partOfSpeech`; clearing
   the shared translation keeps the term's per-locale data, and the term disappears
   only once nothing is left. `doNotTranslate` combines with no parameter but
-  `caseSensitive`. It never retranslates existing keys. A glossary file or write
+  `caseSensitive`. It never retranslates existing keys. Studio loads the config and
+  glossary once at startup, so an edit, from this tool or on disk, shows at once in
+  `verbatra_glossary_get` and `verbatra_key_context`, but the translate,
+  retranslate and estimate tools use it only after Studio restarts. A glossary file or write
   lock that cannot be written fails with `GLOSSARY_UNWRITABLE`, and another writer
   holding the glossary lock past its timeout with `LOCK_CONTENDED`.
 - Each term of `verbatra_glossary_get` carries `byLocale`: the translation and
