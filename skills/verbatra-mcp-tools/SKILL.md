@@ -114,7 +114,7 @@ when the operator granted spend.
 | --- | --- | --- |
 | `project.snapshot` | always | Read the resolved config: whether a usable config is loaded (`configured`), source and target locales, format, path pattern, provider id, where the config and the glossary come from, `humanEdits`, `prune`, and whether values are redacted (`valuesRedacted`). Call it first. With `configured: false` only `configProblem` and `nextStep` are set. |
 | `project.doctor` | always | Run the setup checks (config, format, provider, API key variable by name, network policy, source file, the provider's locale support, and informational ones): each with `status` (`pass`, `fail`, `skipped`), `detail`, and a `fix` when it failed; `ok` is false when any failed. Works without a usable config. No provider call, no key value read, nothing written. |
-| `status.check` | always | Per target locale, how many keys are missing, stale or up to date, how many of them are `protected`, and who wrote the current values (`provenance`). Optional `locales`. |
+| `status.check` | always | Per target locale, how many keys are missing, stale or up to date, how many of them are `protected`, who wrote the current values (`provenance`), and `incompletePlurals`, each plural lacking CLDR categories the language uses (a warning that never changes the counts). Optional `locales`. |
 | `status.diff` | always | Per target locale, the exact keys the next run would add, re-translate or orphan, the `protected` ones it would leave for a person, and `changedOrigins`. Optional `locales`. |
 | `glossary.get` | always | Read every term (per-locale `targets`, `forbidden` renderings, and the shared `target`, note and part of speech when set), the `doNotTranslate` terms, the format `version` and where the glossary comes from. Optional `locale` adds `effective`, the terms a translation into that locale is held to. |
 | `glossary.write` | always | Change one term: `translation`, per-`locale` translation and `forbidden` renderings, `note`, `partOfSpeech`, `caseSensitive`, or `doNotTranslate`. `null` clears a field. Returns the whole glossary afterwards, or only `termCount` and `doNotTranslateCount` when values are redacted. Optional `lockTimeoutMs`. |
@@ -141,7 +141,7 @@ for a write lock another process holds; past it the call fails with
 locale fails). A failed call's text always starts with its code, such as
 `UNKNOWN_KEY: ...` or `RATE_LIMITED: ...`: branch on that prefix. When the error has a
 next step, the text ends with a `Next step: ...` line, such as `Next step: Set GEMINI_API_KEY
-in the environment or in a .env file in the project directory.`: relay it to the user, and
+in the environment, or, with the CLI, in a .env file in the project directory.`: relay it to the user, and
 never ask for the key value it names.
 
 ## Without a config
@@ -348,11 +348,12 @@ starts the server with `verbatra mcp --redact-values` (or `verbatra-mcp
 `on`). `project.snapshot` then reports `valuesRedacted: true`, and the server's
 `instructions` say so too.
 
-- Every source text, translation, description, glossary term, and reviewer or
-  author name in a result is replaced by a marker such as
-  `[redacted length=12 hash=3f9a0c1d2e4b5a6c]`. Equal values share a hash, but
-  only until the server stops. Quoted text in a config, glossary or file error is
-  marked too. Key names, counts, statuses, origins, integrity verdicts, commit
+- Every source text, translation, description and glossary term in a result is
+  replaced by a marker such as `[redacted length=12 hash=3f9a0c1d2e4b5a6c]`, and
+  reviewer and author names are left out. Equal values share a hash, but only
+  until the server stops. An error message that can carry values, such as a
+  config, glossary or file error, is replaced whole by one marker; its code and
+  `Next step:` line stay. Key names, counts, statuses, origins, integrity verdicts, commit
   subjects and paths are not redacted.
 - `review.approve` and `review.reject` take the marker's 16-digit hash as
   `expectedHash` and refuse `expectedValue`. Relay the hash of the value the user
