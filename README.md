@@ -120,7 +120,7 @@ the MCP server nor the hook.
 
 - **[verbatra-cli](./skills/verbatra-cli/SKILL.md)**: Drive the verbatra i18n CLI from a shell or CI. Covers every command the binary registers, which of them cost money, the exit codes, the JSON envelope, the supported formats and providers, and what `verbatra.lock.json` means.
 - **[verbatra-mcp-tools](./skills/verbatra-mcp-tools/SKILL.md)**: Operate a verbatra project through the verbatra stdio MCP server. Covers every registered tool, the spend boundary that keeps the provider-spending tools off the default tool list, how to work a status check into an edit, and what each result actually means.
-- **[verbatra-studio-agent-tools](./skills/verbatra-studio-agent-tools/SKILL.md)**: Operate a verbatra project from an open Verbatra Studio dashboard tab through its WebMCP browser tools. Covers the tool set, the two gates that decide which tools register, the four methods this surface adds over the stdio server, and the traps specific to driving a browser tab.
+- **[verbatra-studio-agent-tools](./skills/verbatra-studio-agent-tools/SKILL.md)**: Operate a verbatra project from an open Verbatra Studio dashboard tab through its WebMCP browser tools. Covers the tool set, the two gates that decide which tools register, how its tool set differs from the stdio server's, and the traps specific to driving a browser tab.
 
 ## What these are
 

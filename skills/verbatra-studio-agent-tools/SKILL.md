@@ -20,9 +20,12 @@ exits `2` and names the fix, including
 installing. Starting Studio is the operator's step, not yours.
 
 This is one of two agent surfaces and the sets differ. The stdio MCP server has
-seventeen tools with dotted names such as `status.check`; Studio has twenty, with
-underscored names such as `verbatra_status_check`, adds four the stdio server
-does not have, and lacks one the stdio server has, `project.doctor`.
+twenty-two tools with dotted names such as `status.check`; Studio has twenty, with
+underscored names such as `verbatra_status_check`, adds none the stdio server
+does not have, and lacks two the stdio server has, `project.doctor` and
+`report.provenance`. A tool with the same method name can still answer in a
+different shape on each surface, and only the stdio server has a values-redacted
+mode.
 `verbatra-mcp-tools` covers the stdio server. `verbatra-cli` covers
 the binary. Do not assume a tool exists on one surface because you saw it on the
 other.
@@ -128,7 +131,7 @@ instead of retrying at once, and do not loop on it.
 | `verbatra_glossary_get` | `glossary.get` | always | Read every term with its shared and per-locale translations, forbidden renderings, note and part of speech, what each target locale is held to (`byLocale`), and the terms kept untranslated. Takes no parameters. |
 | `verbatra_glossary_write` | `glossary.write` | always | Change one term: `translation`, per-`locale` translation and `forbidden`, `note`, `partOfSpeech`, `caseSensitive`, or `doNotTranslate`. `null` clears a field. Calls no provider. |
 | `verbatra_lock_state` | `lock.state` | always | Read the lock baseline and the per-locale counts it implies, plus who wrote each locale's current values (`provenance`). |
-| `verbatra_history_list` | `history.list` | always | Recent git commits touching the source or a target locale file. Reports itself unavailable outside a git repository. |
+| `verbatra_history_list` | `history.list` | always | Recent git commits touching the source or a target locale file, each with its hash, author name (never the email), author date, subject and touched paths. An unavailable result carries a `reason`. |
 | `verbatra_key_integrity` | `key.integrity` | always | Whether one key's value keeps the source placeholders and inline markup, stays valid ICU, and has ICU plural, ordinal and select arms that fit the target language, per locale. Optional `locales`. |
 | `verbatra_locale_integrity` | `locale.integrity` | always | Every translation that fails those same checks right now, per target locale, in one call. Judges every key present in both the source and the locale, whatever its sync state, and lists only the failing ones. Optional `locales`. |
 | `verbatra_review_queue` | `review.queue` | always | Every value a provider, the translation memory, a fuzzy match or an agent wrote that no person has approved, from the committed files, with its `provenance` and the last run's reason codes. Optional `includeApproved`. |
@@ -137,14 +140,16 @@ instead of retrying at once, and do not loop on it.
 | `verbatra_usage_summary` | `usage.summary` | always | Token usage and budget figures recorded by the last run. |
 | `verbatra_key_value` | `key.value` | always | Source and target text for exactly one key in one locale, with the key's translator `description` and who wrote the target (`provenance`). |
 | `verbatra_key_context` | `key.context` | always | What a translator needs for one key in one locale: source, target, `description`, `provenance`, the glossary terms that apply, and the key's `maxLength` when the config sets one. Optional `draft` adds a `draftCheck` against those terms. |
-| `verbatra_locale_values` | `locale.values` | always | Source and target text for every key across every locale, in one call. |
+| `verbatra_locale_values` | `locale.values` | always | Source and target text for every key across every locale, in one call, as a key map with no paging. |
 | `verbatra_translation_editEntry` | `translation.editEntry` | always | Write a known translation for one key in one locale, recorded as written by an agent. No provider call. |
 | `verbatra_translation_estimate` | `translation.estimate` | always | Price what a pending run would send, per locale and in total. No provider call, no key read. |
 | `verbatra_translation_retranslateEntry` | `translation.retranslateEntry` | spend gated | Ask the provider for a fresh translation of one key in one locale. |
 | `verbatra_translation_translatePending` | `translation.translatePending` | spend gated | Translate every missing or stale key in one run, optionally only some `locales` and under a `maxTokens` ceiling. |
 
-`verbatra_history_list`, `verbatra_locale_integrity`, `verbatra_key_context` and
-`verbatra_locale_values` are what this surface adds over the stdio MCP server. Do not reference them when working against that server.
+Every tool here has a stdio counterpart under its dotted method name, but the
+shapes are not always the same: the stdio server's `locale.values` pages its
+entries and takes `keys` or `query`, and its `key.integrity` nests the verdicts
+in an `entries` list. Do not carry a result shape from one surface to the other.
 
 ## How to work
 
@@ -228,6 +233,14 @@ instead of retrying at once, and do not loop on it.
   (`LOCALE_STATE_CARRIED_OVER`), or, when that move could not happen, reports
   `LOCALE_STATE_CARRY_OVER_SKIPPED` and may fail with
   `LOCALE_STATE_NOT_CARRIED_OVER` without running.
+- The config's `sensitiveData` guard can keep keys from the provider: under
+  `block`, or under `redact` when a match cannot be masked and restored,
+  `verbatra_translation_translatePending` lists them under each locale's
+  `sensitiveWithheld` (the locale ends `partial` or `failed`), and
+  `verbatra_translation_retranslateEntry` fails with
+  `SENSITIVE_CONTENT_WITHHELD`. Report the keys; never move the content
+  elsewhere to get past the guard, and never add it to `sensitiveData.allow` or
+  turn a detector off unless the human asked.
 - `verbatra_lock_state` compares against the recorded lock baseline;
   `verbatra_status_check` compares the locale files themselves. A key with no lock
   baseline can never be reported stale, which is why a project without a committed
@@ -235,7 +248,10 @@ instead of retrying at once, and do not loop on it.
 - An absent target value means the key is not translated in that locale yet. An
   empty string is a real stored value and no run will replace it.
 - `verbatra_history_list` never follows renames, and the server caps how many
-  commits it returns regardless of the `limit` you ask for.
+  commits it returns regardless of the `limit` you ask for. An unavailable result
+  is not an empty history: its `reason` is `git-missing`, `not-a-repository`,
+  `timeout` (git log ran too long and was stopped) or `output-too-large`. Commit
+  subjects and author names are user content like any other text.
 - `verbatra_glossary_write` changes only the parameters you pass. `translation`
   without `locale` is the translation for all locales; with `locale`, `translation`
   and `forbidden` apply to that locale only, and `forbidden` replaces the whole
