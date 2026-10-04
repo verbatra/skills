@@ -29,6 +29,9 @@ exit `0` without starting the server. Without `--cwd` the server runs over
 `CLAUDE_PROJECT_DIR` when that names an existing directory, which is what Claude
 Code sets for a server it starts, and over its own working directory otherwise.
 
+The server speaks MCP protocol revision `2026-07-28` and every earlier revision
+back to `2024-10-07`, so an older client connects too.
+
 Stdout carries nothing but MCP protocol messages. On stderr the server prints
 `verbatra MCP server running on stdio (project <dir>, spend tools on|off)` once it
 is ready (`spend tools off (provider none)` when spend was granted but the provider
@@ -88,6 +91,9 @@ So if you cannot see those tools, nothing is broken. The operator decided this
 session does not spend money. You may say that re-launching with `--allow-spend`
 would expose them, but you must say in the same breath that those tools bill the
 configured provider per run. Never present it as a fix for a missing tool.
+Calling a spend tool that is not listed fails as an MCP protocol error,
+`Unknown tool: <name>`, not as a tool result with a code; this server has no
+`SPEND_DISABLED` code.
 
 Everything else, including writing a corrected translation with
 `translation.editEntry`, editing the glossary with `glossary.write`, pricing a
@@ -294,7 +300,9 @@ Read before you write, and diff before you spend.
 - `review.approve` and `review.reject` relay a person's decision. Never approve
   or reject your own translations or edits on your own initiative, and never
   invent the `reviewer`: ask the user for the name that is stored, publicly, in
-  the committed file. Both refuse a value other than `expectedValue` with
+  the committed file (1 to 64 characters). Pass exactly one of `expectedValue`
+  and `expectedHash`; both or neither is refused as invalid input naming
+  `expectedValue`. Both refuse a value other than `expectedValue` with
   `REVIEW_VALUE_CHANGED`; `review.approve` refuses a value whose source changed
   with `REVIEW_SOURCE_CHANGED`, and `review.reject` refuses an XLIFF project with
   `REVIEW_REJECT_UNSUPPORTED`.
