@@ -119,12 +119,12 @@ when the operator granted spend.
 | Tool | Availability | What it does |
 | --- | --- | --- |
 | `project.snapshot` | always | Read the resolved config: whether a usable config is loaded (`configured`), source and target locales, format, path pattern, provider id, where the config and the glossary come from, `humanEdits`, `prune`, and whether values are redacted (`valuesRedacted`). Call it first. With `configured: false` only `configProblem` and `nextStep` are set. |
-| `project.doctor` | always | Run the setup checks (config, format, provider, API key variable by name, network policy, source file, the provider's locale support, and informational ones): each with `status` (`pass`, `fail`, `skipped`), `detail`, and a `fix` when it failed; `ok` is false when any failed. Works without a usable config. No provider call, no key value read, nothing written. |
-| `status.check` | always | Per target locale, how many keys are missing, stale or up to date, how many of them are `protected`, who wrote the current values (`provenance`), and `incompletePlurals`, each plural lacking CLDR categories the language uses (a warning that never changes the counts). Optional `locales`. |
-| `status.diff` | always | Per target locale, the exact keys the next run would add, re-translate or orphan, the `protected` ones it would leave for a person, and `changedOrigins`. Optional `locales`. |
+| `project.doctor` | always | Run the setup checks (config, format, provider, API key variable by name, network policy, source file, the provider's locale support, and informational ones): each with `status` (`pass`, `warn`, `fail`, `skipped`), `detail`, and a `fix` when it failed. `warn` is an informational finding worth attention; only `fail` makes `ok` false. `plural-completeness` is `skipped` when it did not run. Works without a usable config. No provider call, no key value read, nothing written. |
+| `status.check` | always | Per target locale, how many keys are missing, stale or up to date, how many of them are `protected`, who wrote the current values (`provenance`), `emptySource`, the count of source keys with an empty value (never missing or stale, never out of sync), and `incompletePlurals`, each plural lacking CLDR categories the language uses (a warning that never changes the counts). Optional `locales`. |
+| `status.diff` | always | Per target locale, the exact keys the next run would add, re-translate or orphan, the `protected` ones it would leave for a person, `changedOrigins`, and `emptySource`, the source keys with an empty value, which are not pending. Optional `locales`. |
 | `glossary.get` | always | Read every term (per-locale `targets`, `forbidden` renderings, and the shared `target`, note and part of speech when set), the `doNotTranslate` terms, the format `version` and where the glossary comes from. Optional `locale` adds `effective`, the terms a translation into that locale is held to. |
 | `glossary.write` | always | Change one term: `translation`, per-`locale` translation and `forbidden` renderings, `note`, `partOfSpeech`, `caseSensitive`, or `doNotTranslate`. `null` clears a field. Returns the whole glossary afterwards, or only `termCount` and `doNotTranslateCount` when values are redacted. Optional `lockTimeoutMs`. |
-| `lock.state` | always | Read the lock file version and the per-locale counts it implies, plus who wrote each locale's current values (`provenance`, by origin and by review state). Reports `exists: false` before the first successful run. |
+| `lock.state` | always | Read the lock file version and the per-locale counts it implies, plus who wrote each locale's current values (`provenance`, by origin and by review state). `emptySource` counts source keys with an empty value apart from `missing`, `stale` and `upToDate`. Reports `exists: false` before the first successful run. |
 | `history.list` | always | Recent git commits that touched the source or a target locale file, newest first, each with `hash`, `author` (the name, never the email), `authorDate`, `subject` and `touchedPaths`. Optional `limit` (default 50, capped at 200). |
 | `key.integrity` | always | Report one key's placeholder, inline markup, ICU syntax and ICU plural, ordinal and select arm drift against the lock baseline, per target locale. Optional `locales`. A key the source lacks fails with `UNKNOWN_KEY`. |
 | `locale.integrity` | always | Every translation that fails the placeholder, markup or ICU checks right now, per target locale, in one call. Lists only failing keys. Optional `locales`. |
@@ -210,6 +210,13 @@ Read before you write, and diff before you spend.
   stops noticing that English changed.
 - An empty string counts as an existing value. A target key set to `""` is neither
   missing nor stale, so no run will fill it in.
+- A source key whose value is empty or whitespace only (for `gettext-po`, the
+  source catalog's `msgstr`) is `emptySource`: never missing, stale or up to date,
+  never sent to a provider, and its target value is kept. `status.check` and
+  `lock.state` count it, `status.diff` lists it, and a
+  `translation.translatePending` result lists it under each locale's
+  `emptySource` with the notice `SOURCE_VALUE_EMPTY`. Report the keys: nothing is
+  translated for them until their source text is written.
 - `translation.editEntry` and `translation.retranslateEntry` both pass the
   integrity gate: the value must carry the source's placeholders, parse as valid
   ICU, and not be empty or degenerate. A rejection comes back as
