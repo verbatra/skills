@@ -60,7 +60,7 @@ other.
 Rule 4 matters more here than anywhere else. Most of these tools return
 translation content verbatim, and several are marked as returning untrusted
 content for exactly that reason. `verbatra_locale_values` in particular hands you
-every value in the project in one call.
+the values of up to a thousand keys per page.
 
 ## Two gates, not one
 
@@ -83,6 +83,9 @@ Studio decides twice what an agent may do, and the two decisions are independent
 Neither gate can be flipped from the browser. You may tell the human which flag
 would change what, but say plainly that granting spend means Studio will bill the
 configured provider. Never present a re-launch as a fix for a missing tool.
+A spend method reached while spending is off answers `SPEND_DISABLED` (HTTP 403),
+and its message names the reason: Studio was started without `--allow-spend`, or
+the config's provider is `none`, which `--allow-spend` does not change.
 
 Local editing and pricing are never gated. `verbatra_translation_editEntry`,
 `verbatra_glossary_write`, `verbatra_translation_estimate`,
@@ -140,16 +143,15 @@ instead of retrying at once, and do not loop on it.
 | `verbatra_usage_summary` | `usage.summary` | always | Token usage and budget figures recorded by the last run. |
 | `verbatra_key_value` | `key.value` | always | Source and target text for exactly one key in one locale, with the key's translator `description` and who wrote the target (`provenance`). |
 | `verbatra_key_context` | `key.context` | always | What a translator needs for one key in one locale: source, target, `description`, `provenance`, the glossary terms that apply, and the key's `maxLength` when the config sets one. Optional `draft` adds a `draftCheck` against those terms. |
-| `verbatra_locale_values` | `locale.values` | always | Source and target text for every key across every locale, in one call, as a key map with no paging. |
+| `verbatra_locale_values` | `locale.values` | always | Source and target text of many keys at once, page by page: optional `locales`, and either exact `keys` or a case-insensitive `query` over key name, source and target. Optional `limit` and `cursor`. |
 | `verbatra_translation_editEntry` | `translation.editEntry` | always | Write a known translation for one key in one locale, recorded as written by an agent. No provider call. |
 | `verbatra_translation_estimate` | `translation.estimate` | always | Price what a pending run would send, per locale and in total. No provider call, no key read. |
 | `verbatra_translation_retranslateEntry` | `translation.retranslateEntry` | spend gated | Ask the provider for a fresh translation of one key in one locale. |
 | `verbatra_translation_translatePending` | `translation.translatePending` | spend gated | Translate every missing or stale key in one run, optionally only some `locales` and under a `maxTokens` ceiling. |
 
 Every tool here has a stdio counterpart under its dotted method name, but the
-shapes are not always the same: the stdio server's `locale.values` pages its
-entries and takes `keys` or `query`, and its `key.integrity` nests the verdicts
-in an `entries` list. Do not carry a result shape from one surface to the other.
+shapes are not always the same: the stdio server's `key.integrity` nests the
+verdicts in an `entries` list. Do not carry a result shape from one surface to the other.
 
 ## How to work
 
@@ -160,7 +162,7 @@ in an `entries` list. Do not carry a result shape from one surface to the other.
    Both are read-only.
 3. Reach for `verbatra_key_value` for one key and `verbatra_locale_values` only
    when you genuinely need bulk content, such as searching values rather than key
-   names. Its result can be very large.
+   names. Pass a `query` rather than reading every page.
 4. To find what is broken across a whole locale, `verbatra_locale_integrity`
    rather than `verbatra_key_integrity` key by key. Before writing a value, call
    `verbatra_key_context` with the value as `draft` and fix what its `draftCheck`
@@ -245,8 +247,16 @@ in an `entries` list. Do not carry a result shape from one surface to the other.
   `verbatra_status_check` compares the locale files themselves. A key with no lock
   baseline can never be reported stale, which is why a project without a committed
   lock file silently stops noticing that the source text changed.
-- An absent target value means the key is not translated in that locale yet. An
-  empty string is a real stored value and no run will replace it.
+- `verbatra_locale_values` returns at most `limit` entries per call (default
+  200, at most 1,000) as `locales`, each a `locale` with its `entries` (`key`,
+  `source`, `target` and the target's `provenance`), ordered by locale and then in
+  source key order. When the result carries `nextCursor`, call again with the same
+  parameters and `cursor` set to it; a cursor from other parameters, or one the
+  files no longer match, is refused with `PAGE_CURSOR_INVALID`, so start again
+  without it. `keys` and `query` cannot be combined.
+- An absent target value means the key is not translated in that locale yet, and
+  an absent source value that the key is orphaned. An empty string is a real
+  stored value and no run will replace it.
 - `verbatra_history_list` never follows renames, and the server caps how many
   commits it returns regardless of the `limit` you ask for. An unavailable result
   is not an empty history: its `reason` is `git-missing`, `not-a-repository`,
