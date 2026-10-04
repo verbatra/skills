@@ -310,7 +310,7 @@ run" with "did the work land".
 | --- | --- |
 | `0` | Success: nothing outstanding, or everything requested completed. |
 | `1` | It ran, the result is not clean: a locale failed or is partial, `check` found drift or, with `--qa`, an integrity error (a review warning or an incomplete plural too under `--strict`), with `--require-reviewed`, an unapproved machine-written value, or, with `--sensitive`, sensitive content, `check --file` found a syntax or integrity error (a review warning or an incomplete plural too under `--strict`), `diff` found pending keys or, with `--unused`, a complete scan found unused source keys, `report provenance` could not read the provenance file, `doctor` found a failed check or, with `--literals`, an untranslated literal or an unreadable source file, `types --check` found the committed declaration out of date. |
-| `2` | It could not run: bad config, unreadable source, corrupt lock file, a network policy that refuses the provider's host, a locale the provider does not support, `mcp --redact-values` with a `@verbatra/mcp` too old to redact, or a usage error such as an unknown `--locales` value. `init` also exits `2` when a flag it needs is missing, when several formats or file patterns fit, or when it refuses to replace an existing config. |
+| `2` | It could not run: bad config, unreadable source, corrupt lock file, a network policy that refuses the provider's host, a locale the provider does not support, `mcp --redact-values` with a `@verbatra/mcp` too old to redact, a `watch` that could not start (such as a provider whose key variable is unset), or a usage error such as an unknown `--locales` value. `init` also exits `2` when a flag it needs is missing, when several formats or file patterns fit, or when it refuses to replace an existing config. |
 | `3` | `translate` (a dry run and `--estimate` included) in a human-only project (provider `none`) finished cleanly but left keys that need a human translation. |
 | `130` | `watch`, `studio` or `mcp` was force-stopped by a second interrupt (all three return the same stoppable session), or `translate` or `import` was interrupted with SIGINT. |
 | `143` | `translate` or `import` was stopped with SIGTERM. |
@@ -391,7 +391,10 @@ envelopes.
 `watch --json` is a stream, not a payload: one envelope per run as NDJSON for the
 life of the process. A failed run is a record on that stream. It does not stop the
 watcher and does not change the exit code, so treat it as an event to report, not
-a reason to restart the process.
+a reason to restart the process. A failure before watching starts is different:
+a config that does not load, a missing source file or a provider that cannot
+be built, most often because its key variable is unset, ends `watch` with exit `2`
+and one error envelope, and it never waits for changes.
 
 ## Human output on stderr
 
@@ -465,6 +468,8 @@ exits `1`.
 | `LOCK_FILE_INVALID`, `PROVENANCE_FILE_INVALID`, `PROVENANCE_FILE_UNWRITABLE` | `verbatra.lock.json` or `verbatra.provenance.json` is corrupt, too large or from a newer verbatra. Restore it from version control; never delete it to get past this. |
 | `LOCK_CONTENDED` | Another process holds a write lock past the timeout, took over a lock this run held, or a lock was left by another machine or an older verbatra. See the lock paragraph under Exit codes. |
 | `LOCK_TIMEOUT_INVALID` | An SDK caller passed a `lockAcquireTimeoutMs` that is not a whole number of milliseconds of at least 0. The CLI refuses a bad `--lock-timeout` first, as `INVALID_LOCK_TIMEOUT`. |
+| `PAGE_CURSOR_INVALID`, `PAGE_LIMIT_INVALID` | An SDK caller of `localeValuesPage` or `provenanceReportPage` passed a cursor made under other filters or one the files no longer match, or a `limit` that is not a whole number from 1 to 1000. No CLI command pages. Call again without the cursor. |
+| `RUN_CANCELLED` | An SDK caller's `signal` aborted the work: `retranslateEntry` throws it before writing anything, and `translate` records it on each locale it kept from starting and sets `cancelled: true` on the summary. The CLI passes no signal; an interrupted run exits `130` or `143` instead. Run again to finish what is pending. |
 | `LOCALE_STATE_NOT_CARRIED_OVER` | Never thrown; a locale whose respelled state could not be moved did not run. Re-run once the other process is done. |
 | `KEY_PROTECTED`, `KEY_PINNED` | A single-key machine write refused a person's value or a `pinnedKeys` key. Leave it for a person. |
 | `SENSITIVE_CONTENT_WITHHELD` | A single-key retranslation in Studio or the MCP server kept the key from the provider because `sensitiveData` matched it; no CLI command raises it, since `translate` and `watch` list such keys under `sensitiveWithheld`. Report it; do not loosen `sensitiveData`. |
@@ -501,7 +506,8 @@ A run that completed can still carry notices, each in
 `SOURCE_FOREIGN_PLACEHOLDERS` (source values to translate hold a placeholder-shaped
 token the format does not protect), and the sensitive content notices
 `SENSITIVE_CONTENT_SENT`, `SENSITIVE_CONTENT_REDACTED` and
-`SENSITIVE_CONTENT_WITHHELD`,
+`SENSITIVE_CONTENT_WITHHELD`, and `RUN_CANCELLED` (an SDK run was cancelled while
+the locale ran, so its unsent keys stay pending and the locale is partial),
 plus the codes a provider raises. A notice is
 something to report, not a failure; the exit code already says whether the run was
 clean.
