@@ -259,12 +259,21 @@ the human decide.
 key was translated from. It is the only thing that separates the two reasons a key
 needs work:
 
-- **missing**: the key is in the source locale and absent from the target file. It
-  is translated on the next run.
-- **stale** (reported as `changed` by `diff`): the key is present in the target
-  file, the lock has a baseline hash for it, and the current source text hashes
-  differently. It is re-translated on the next run, overwriting the existing
-  target value.
+- **missing**: the key has a non-empty value in the source locale and is absent
+  from the target file. It is translated on the next run.
+- **stale** (reported as `changed` by `diff`): the key has a non-empty source value,
+  is present in the target file, the lock has a baseline hash for it, and the
+  current source text hashes differently. It is re-translated on the next run,
+  overwriting the existing target value.
+- **empty source**: the key's source value is empty or whitespace only (for
+  `gettext-po`, the source catalog's `msgstr`), such as a key `extract` added
+  without a default. Whatever the target or the lock holds, it is never missing,
+  stale, up to date, `would translate` or `unfilled`, never sent to a provider,
+  and `export` writes no row for it; the target keeps its value. `check` counts it
+  as `emptySource` per locale, `diff` lists the keys under `emptySource`, and a
+  `translate` run lists them in `result.locales[].emptySource` with the notice
+  `SOURCE_VALUE_EMPTY`. It never makes `check` or `diff` exit `1`. Write the source
+  text to translate it.
 
 A key with no lock baseline can never be stale. That is the trap: delete or never
 commit the lock file and verbatra stops noticing that source text changed, so
@@ -504,7 +513,8 @@ A run that completed can still carry notices, each in
 `LOCALE_UNVERIFIED_BY_PROVIDER`, `LOCALE_NOT_WELL_TESTED`,
 `GLOSSARY_UNSUPPORTED_BY_PROVIDER` and `FORMALITY_UNSUPPORTED_BY_PROVIDER`,
 `SOURCE_FOREIGN_PLACEHOLDERS` (source values to translate hold a placeholder-shaped
-token the format does not protect), and the sensitive content notices
+token the format does not protect), `SOURCE_VALUE_EMPTY` (source keys with an empty
+value, left untranslated until their source text is written), and the sensitive content notices
 `SENSITIVE_CONTENT_SENT`, `SENSITIVE_CONTENT_REDACTED` and
 `SENSITIVE_CONTENT_WITHHELD`, and `RUN_CANCELLED` (an SDK or MCP run was cancelled while
 the locale ran, so its unsent keys stay pending and the locale is partial),
@@ -652,8 +662,8 @@ sent. `doctor` reports the effective policy in its `network-policy` check.
 ## doctor
 
 `verbatra doctor --json` returns `result.ok` and one entry per check in
-`result.checks`, each with an `id` and a `status` of `pass`, `fail` or `skipped`,
-always these eleven in this order:
+`result.checks`, each with an `id` and a `status` of `pass`, `warn`, `fail` or
+`skipped`, always these eleven in this order:
 
 | Check id | What it answers |
 | --- | --- |
@@ -664,13 +674,17 @@ always these eleven in this order:
 | `network-policy` | The effective network policy permits the provider's host. |
 | `source-file` | The source locale file exists and parses. |
 | `plural-rules` | Informational: the ICU and CLDR versions plural categories come from, and any target locale ICU has no rules for. |
-| `plural-completeness` | Informational: each plural in a target locale file that lacks CLDR categories its language uses, as `check` reports them. |
+| `plural-completeness` | Informational: each plural in a target locale file that lacks CLDR categories its language uses, as `check` reports them; `skipped` when the format does not store plural forms by CLDR category. |
 | `locale-codes` | Informational: configured codes that are valid but not canonical BCP 47, with the canonical spelling. Nothing is renamed. |
 | `locale-state` | Informational: locales the lock file, translation memory or provenance file hold state for that the config does not list, and what the next `translate` does about them. |
-| `locales` | The provider supports the source and every target locale; fails on the locale `translate` would refuse, `skipped` for provider `none`. The per-locale report is in `result.locales`. |
+| `locales` | The provider supports the source and every target locale; fails on the locale `translate` would refuse, `warn` when a locale carries a support warning or a `--live` fetch failed, `skipped` for provider `none`. The per-locale report is in `result.locales`. |
 
-The informational checks never fail. Every check but `config` reports `skipped`
-when `config` itself failed. With `--literals` the run has exactly two checks,
+The informational checks never fail: they report `warn` when they name something
+worth attention and `pass` otherwise. Only `fail` sets `result.ok` to false and
+makes `doctor` exit `1`; `warn` and `skipped` never change `ok` or the exit code.
+The human report prints `[warn]` for such a check and ends with `no problems found`
+(`no problems found, 2 warnings` when checks warned). Every check but `config`
+reports `skipped` when `config` itself failed. With `--literals` the run has exactly two checks,
 `config` and `untranslated-literals`. Branch on `id`, never on `title` or
 `detail`. A failed check also carries `fix`, one imperative next step (printed as a
 `fix:` line in the human report); a passed or skipped check has none.
