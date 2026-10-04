@@ -247,6 +247,11 @@ Read before you write, and diff before you spend.
   `total` grows as each locale is planned, and `message` names the locale and
   batch, such as `de: batch 3/7`. Progress is not a result; wait for the call to
   return before reporting what landed.
+- Cancelling a spend tool call (`notifications/cancelled`, or the connection
+  closing) stops it, releases its locks and sends no result.
+  `translation.translatePending` keeps what already arrived and the rest stays
+  pending; `translation.retranslateEntry` writes nothing. Call `status.diff` to see
+  what is still pending.
 - `translation.translatePending` reports each key the integrity gate refused
   under its locale's `integrityRefusals`, with `key`, a `reason` of
   `placeholder`, `markup`, `icu`, `degenerate` or `empty`, and, when one part is at

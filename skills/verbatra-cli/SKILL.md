@@ -469,7 +469,7 @@ exits `1`.
 | `LOCK_CONTENDED` | Another process holds a write lock past the timeout, took over a lock this run held, or a lock was left by another machine or an older verbatra. See the lock paragraph under Exit codes. |
 | `LOCK_TIMEOUT_INVALID` | An SDK caller passed a `lockAcquireTimeoutMs` that is not a whole number of milliseconds of at least 0. The CLI refuses a bad `--lock-timeout` first, as `INVALID_LOCK_TIMEOUT`. |
 | `PAGE_CURSOR_INVALID`, `PAGE_LIMIT_INVALID` | An SDK caller of `localeValuesPage` or `provenanceReportPage` passed a cursor made under other filters or one the files no longer match, or a `limit` that is not a whole number from 1 to 1000. No CLI command pages. Call again without the cursor. |
-| `RUN_CANCELLED` | An SDK caller's `signal` aborted the work: `retranslateEntry` throws it before writing anything, and `translate` records it on each locale it kept from starting and sets `cancelled: true` on the summary. The CLI passes no signal; an interrupted run exits `130` or `143` instead. Run again to finish what is pending. |
+| `RUN_CANCELLED` | An SDK caller's `signal` aborted the work: `retranslateEntry` throws it before writing anything, and `translate` records it on each locale it kept from starting and sets `cancelled: true` on the summary. The MCP server's spend tools pass the client's cancellation as that signal; the CLI and Studio pass none, and an interrupted CLI run exits `130` or `143` instead. Run again to finish what is pending. |
 | `LOCALE_STATE_NOT_CARRIED_OVER` | Never thrown; a locale whose respelled state could not be moved did not run. Re-run once the other process is done. |
 | `KEY_PROTECTED`, `KEY_PINNED` | A single-key machine write refused a person's value or a `pinnedKeys` key. Leave it for a person. |
 | `SENSITIVE_CONTENT_WITHHELD` | A single-key retranslation in Studio or the MCP server kept the key from the provider because `sensitiveData` matched it; no CLI command raises it, since `translate` and `watch` list such keys under `sensitiveWithheld`. Report it; do not loosen `sensitiveData`. |
@@ -506,7 +506,7 @@ A run that completed can still carry notices, each in
 `SOURCE_FOREIGN_PLACEHOLDERS` (source values to translate hold a placeholder-shaped
 token the format does not protect), and the sensitive content notices
 `SENSITIVE_CONTENT_SENT`, `SENSITIVE_CONTENT_REDACTED` and
-`SENSITIVE_CONTENT_WITHHELD`, and `RUN_CANCELLED` (an SDK run was cancelled while
+`SENSITIVE_CONTENT_WITHHELD`, and `RUN_CANCELLED` (an SDK or MCP run was cancelled while
 the locale ran, so its unsent keys stay pending and the locale is partial),
 plus the codes a provider raises. A notice is
 something to report, not a failure; the exit code already says whether the run was
