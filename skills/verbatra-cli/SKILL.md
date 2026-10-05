@@ -572,12 +572,17 @@ record names the files it wrote, the resolved config, where each value came from
 `--agent` (off by default) also sets the project up for coding agents: it writes
 a verbatra section between `<!-- verbatra:start -->` and `<!-- verbatra:end -->`
 markers into `AGENTS.md`, or into `CLAUDE.md` when that is the only instruction
-file (a file already holding the section keeps it), and adds the `verbatra`
-server, `npx -y @verbatra/mcp` with spending off, to `.mcp.json`. Text outside
-the markers and other servers are kept, a rerun leaves both files byte-identical,
+file (`AGENTS.md` wins when both exist), and adds the `verbatra` server,
+`npx -y @verbatra/mcp` with spending off, to `.mcp.json`. In a file that already
+holds the section, the text between the markers is replaced with the current
+text and reported `updated`, or `unchanged` when it already matches; never put
+your own notes between the markers. Text outside the markers and other servers
+are kept, a rerun with the same verbatra leaves both files byte-identical,
 and a `verbatra` server that differs is left as it is and reported as
 `mcpServer: "differs"` in the record's `agent` field, which is `null` without
 the flag. Never hand-edit a differing server back without asking the human.
+Never also install the verbatra Claude Code plugin next to that `.mcp.json`
+entry: the plugin brings its own server, so the two register it twice.
 In a project that already has a config, run `verbatra init --agent --json` with
 no config flag and no `--force`: it keeps the config untouched (listed
 `unchanged`, `agent.configKept: true`, and `config`, `sources`, `apiKeyEnvVar`
