@@ -16,14 +16,14 @@
 ## Install
 
 ```bash
-npx skills@latest add verbatra/skills --skill '*' -a claude-code -y
+npx skills@latest add verbatra/skills --skill verbatra-cli -a claude-code -y
 ```
 
-That installs all three skills. The slugs are `verbatra-cli`, `verbatra-mcp-tools` and
-`verbatra-studio-agent-tools`; pass one to `--skill` instead of `'*'` for a single skill, and
-repeat `--skill` to pick a subset. Add `-g` to install for your user instead of the current
-project, and repeat `-a` to target another agent. The install writes the skill into your agent
-directory and records a row in your own `skills-lock.json`.
+Swap `claude-code` for your agent's id. The slugs are `verbatra-cli`, `verbatra-mcp-tools` and
+`verbatra-studio-agent-tools`; repeat `--skill` to pick a subset, or pass `--skill '*'` with the
+same `-a claude-code -y` to install all three. Add `-g` to install for your user instead of the
+current project. The install writes the skill into your agent directory and records a row in
+your own `skills-lock.json`.
 
 ### Pinning a version
 
@@ -60,6 +60,12 @@ npx skills@latest add verbatra/skills#ae31c921872cad8f70989ef75ad43064b6ffb1bd -
 
 In Claude Code, one install brings the three skills, the verbatra MCP server and a
 hook that checks edited locale files:
+
+Use the plugin instead of a `verbatra` entry in `.mcp.json` (the one `verbatra init --agent` or
+`claude mcp add` writes), never both: the plugin bundles its own copy of the server, so together
+they register it twice. If the project's `.mcp.json` already names a `verbatra` server, remove
+that entry before installing the plugin, or skip the plugin and install the skills alone as
+shown above.
 
 Install it into the project that holds your verbatra config, from that project's root:
 
@@ -114,7 +120,7 @@ What the plugin adds:
 
 The plugin carries no `version` field, so every commit on `main` is an update.
 The skills-only install in the previous section keeps working and needs neither
-the MCP server nor the hook.
+the MCP server nor the hook; it is the route to take next to a `.mcp.json` entry.
 
 ## Skills
 
