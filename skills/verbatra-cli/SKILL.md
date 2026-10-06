@@ -154,7 +154,7 @@ Read this table before running anything unattended.
 | `report` | no | no | no |
 | `pseudo` | no | yes, a pseudolocale under the out directory | no |
 | `types` | no | yes, the generated declaration, unless `--check` | no |
-| `doctor` | no | no | no, it never reads a key value; `--literals` does not even check for one; `--live` fetches a machine-translation provider's language list, sending the key DeepL and Google need, which uses no translation quota |
+| `doctor` | no | no | no, it never reads a key value; `--literals` does not even check for one; `--live` fetches a machine-translation provider's language list, sending the key DeepL and Google need, which uses no translation quota; `--data-flow` reads no key, makes no network request and spends nothing |
 | `studio` | only with `--allow-spend` or `VERBATRA_STUDIO_ALLOW_SPEND` | yes, through in-place edits | only when spend is granted |
 | `mcp` | only with `--allow-spend` or `VERBATRA_MCP_ALLOW_SPEND` (also read from `.env.local` and `.env`) | yes, through in-place edits | only when spend is granted |
 | `init` | no | yes, the config, the env example unless the provider is `none`, and `.gitignore`; with `--agent` also `AGENTS.md` or `CLAUDE.md` and `.mcp.json` | no |
@@ -208,6 +208,14 @@ the same marking (`state-qualifier="mt-suggestion"` in XLIFF 1.2, `origin` and
 `review-state` metadata in XLIFF 2.0, `x-origin` and `x-review` properties in
 TMX), and imports ignore it; `result.provenanceMarkers: "unavailable"` on an
 export means no marker could be written.
+
+`verbatra pseudo` writes a pseudolocale built from the source strings, with no
+provider, no key and no network request. The default `--mode accented` writes
+`en-XA`; `--mode bidi` writes `ar-XB`, a right-to-left pseudolocale, so layout
+that assumes left-to-right text shows up before a real translation exists, and an
+`i18next-json` plural also gets every CLDR category Arabic needs and the source
+lacks, filled from its `other` form. An unknown `--mode` exits `2` with
+`INVALID_OPTION`.
 
 Three commands read application source through the config's `extract` block, and
 none of them calls a provider: `extract` adds keys found at translation call
@@ -605,7 +613,7 @@ Branch on the failure `code`, all of them exit `2`:
 | --- | --- |
 | `MISSING_OPTIONS` | Pass the flags listed in `missing`, or `--yes` to take the defaults. `--yes` cannot fill a flag without a default: `openai-compatible` still needs `--base-url` and `--model`, and `libretranslate` needs `--base-url`. |
 | `INVALID_PROVIDER`, `INVALID_FORMAT` | Pass one of the values listed in `candidates`. |
-| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible` or `libretranslate`, or `--cwd` names no existing directory. `doctor` raises it too, for `--locales` or `--live` together with `--literals`, and `check` for an empty `--file` or `--file` with `--locales`, `--consistency`, `--require-reviewed` or `--sensitive`. |
+| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible` or `libretranslate`, or `--cwd` names no existing directory. `doctor` raises it too, for `--locales` or `--live` together with `--literals` and for `--data-flow` together with `--literals`, `--locales` or `--live`, `pseudo` for an unknown `--mode`, and `check` for an empty `--file` or `--file` with `--locales`, `--consistency`, `--require-reviewed` or `--sensitive`. |
 | `INIT_UNWRITABLE` | `init` could not write a file into its directory, for example a read-only one. The message names the file, the file-system code and any file already written; tell the human rather than retrying. |
 | `FORMAT_AMBIGUOUS`, `LAYOUT_AMBIGUOUS` | Several fit; ask the human which of `candidates` is right and pass `--format` or `--path`. |
 | `CONFIG_EXISTS` | A `verbatra.config.ts` is already there (reported before any missing or ambiguous answer); an identical one passes as `unchanged`, a different one is refused; never add `--force` unless the human asked to replace it. Another config file verbatra would read first (or a `verbatra` key in `package.json`) is refused even with `--force`. |
@@ -690,9 +698,21 @@ makes `doctor` exit `1`; `warn` and `skipped` never change `ok` or the exit code
 The human report prints `[warn]` for such a check and ends with `no problems found`
 (`no problems found, 2 warnings` when checks warned). Every check but `config`
 reports `skipped` when `config` itself failed. With `--literals` the run has exactly two checks,
-`config` and `untranslated-literals`. Branch on `id`, never on `title` or
-`detail`. A failed check also carries `fix`, one imperative next step (printed as a
-`fix:` line in the human report); a passed or skipped check has none.
+`config` and `untranslated-literals`. With `--data-flow` it has exactly two too,
+`config` and `data-flow`, and `--data-flow` cannot be combined with `--literals`,
+`--locales` or `--live` (`INVALID_OPTION`, exit `2`). With `--json` the data-flow
+manifest is in `result.dataFlow`; its `version` is `1` and changes only when a
+field is renamed or removed, so ignore fields you do not know. Branch on `id`,
+never on `title` or `detail`. A failed check also carries `fix`, one imperative
+next step (printed as a `fix:` line in the human report); a passed or skipped
+check has none.
+
+### Checks that replace the setup run
+
+| Check id | What it answers |
+| --- | --- |
+| `untranslated-literals` | Only with `--literals`: the `extract` source roots hold no hardcoded user-facing string and no file the scan could not read; fails otherwise. |
+| `data-flow` | Only with `--data-flow`, informational: what is sent to which host and what is written locally. `pass`, or `warn` when the network policy refuses a host or holds an invalid value, or the source cannot be read for the counts; never `fail`. |
 
 ## Respelled locale codes
 
