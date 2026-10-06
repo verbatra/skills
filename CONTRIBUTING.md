@@ -60,7 +60,7 @@ compares them to the tables and the spelled-out counts in the three skill docume
 | `## Formats` table in `verbatra-cli` | `SUPPORTED_FORMATS` in `packages/core/src/model/supported-format.ts` |
 | `## Providers` first column in `verbatra-cli` | the `id` literals of `providerConfigSchema` in `packages/sdk/src/config/provider-config.ts`, every one but `none` backed by `providerFactories` |
 | `## Providers` second column in `verbatra-cli` | `PROVIDER_ENV` and `OPENAI_COMPATIBLE_ENV_VAR` in `packages/ai-providers/src/key-env-vars.ts`; `none` names no variable |
-| `## doctor` table in `verbatra-cli` | `"config"` then `CONFIG_DEPENDENT_IDS` in `packages/sdk/src/flow/doctor.ts`, in order; every other `DoctorCheckId` is named in the section's prose |
+| `## doctor` table in `verbatra-cli` | `"config"` then `CONFIG_DEPENDENT_IDS` in `packages/sdk/src/flow/doctor.ts`, in order; every other `DoctorCheckId` is a row of the `### Checks that replace the setup run` table under it |
 | `## Error and notice codes` table in `verbatra-cli` | every `SdkErrorCode` in `packages/sdk/src/errors.ts`, once each; any other code must be in `CLI_ERROR_CODES` in `packages/cli/src/cli-error-codes.ts`, which that table and the `init` failure table under `## Setting a project up` cover between them |
 | Notice code list under `## Error and notice codes` in `verbatra-cli` | `SdkNoticeCode` in `packages/sdk/src/flow/summary.ts` |
 | `## Tools` table in `verbatra-mcp-tools` | `ALL_TOOLS_IN_ORDER` and `SPEND_TOOL_NAMES` in `packages/mcp/src/tools/registry.ts`, cross-checked against every `name:` declared under `packages/mcp/src/tools/` |

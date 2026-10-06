@@ -591,13 +591,11 @@ describe("the cli skill enumerates the real doctor checks and sdk codes", () => 
     expect(doctorRows.map((cells) => backticked(cells[0]))).toEqual(doctorStandardRunIds());
   });
 
-  it("covers every declared doctor check id between the table and the --literals prose", () => {
-    const literalsOnly = doctorCheckIds().filter((id) => !doctorStandardRunIds().includes(id));
-    const doctor = sourceBlock(skill, "## doctor", "\n## ", "doctor section");
-    for (const id of literalsOnly) {
-      expect(doctor).toContain(`\`${id}\``);
-    }
-    expect([...doctorStandardRunIds(), ...literalsOnly].sort()).toEqual(doctorCheckIds().sort());
+  it("lists every check that replaces the setup run in its own table", () => {
+    const replacing = doctorCheckIds().filter((id) => !doctorStandardRunIds().includes(id));
+    const rows = tableRowsUnder(skill, "### Checks that replace the setup run", CLI_SKILL);
+    expect(rows.map((cells) => backticked(cells[0])).sort()).toEqual([...replacing].sort());
+    expect([...doctorStandardRunIds(), ...replacing].sort()).toEqual(doctorCheckIds().sort());
   });
 
   it("states the standard doctor check count the source declares", () => {
