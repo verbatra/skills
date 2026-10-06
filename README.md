@@ -65,7 +65,9 @@ Use the plugin instead of a `verbatra` entry in `.mcp.json` (the one `verbatra i
 `claude mcp add` writes), never both: the plugin bundles its own copy of the server, so together
 they register it twice. If the project's `.mcp.json` already names a `verbatra` server, remove
 that entry before installing the plugin, or skip the plugin and install the skills alone as
-shown above.
+shown above. Once the plugin is enabled in `.claude/settings.json` or
+`.claude/settings.local.json`, `verbatra init --agent` leaves `.mcp.json` alone, but it never
+removes an entry that is already there.
 
 Install it into the project that holds your verbatra config, from that project's root:
 
