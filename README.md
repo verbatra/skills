@@ -94,7 +94,7 @@ What the plugin adds:
   [`.mcp.json`](./.mcp.json), and the parity workflow fails whenever the pin differs
   from the `@verbatra/mcp` version in the source repository. Without a usable verbatra config
   in the project it still starts, but only `project.snapshot` and `project.doctor`
-  work: run `npx verbatra init` there, and the next tool call picks the config up
+  work: run `npx @verbatra/cli init` there, and the next tool call picks the config up
   without a restart. It reads a provider API key from
   the environment Claude Code runs in; the plugin has no key option and never
   should.
