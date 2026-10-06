@@ -157,7 +157,7 @@ Read this table before running anything unattended.
 | `doctor` | no | no | no, it never reads a key value; `--literals` does not even check for one; `--live` fetches a machine-translation provider's language list, sending the key DeepL and Google need, which uses no translation quota; `--data-flow` reads no key, makes no network request and spends nothing |
 | `studio` | only with `--allow-spend` or `VERBATRA_STUDIO_ALLOW_SPEND` | yes, through in-place edits | only when spend is granted |
 | `mcp` | only with `--allow-spend` or `VERBATRA_MCP_ALLOW_SPEND` (also read from `.env.local` and `.env`) | yes, through in-place edits | only when spend is granted |
-| `init` | no | yes, the config, the env example unless the provider is `none`, and `.gitignore`; with `--agent` also `AGENTS.md` or `CLAUDE.md` and each wired client's MCP config (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`); nothing with `--dry-run` | no |
+| `init` | no | yes, the config, the env example unless the provider is `none`, and `.gitignore`; with `--agent` also `AGENTS.md` or `CLAUDE.md` and each wired client's MCP config (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, `.codex/config.toml`, `.gemini/settings.json`); nothing with `--dry-run` | no |
 | `extract` | no | yes, the source locale, unless `--dry-run` | no |
 
 `import` is worth calling out: it applies human translations from a workbook and
@@ -601,10 +601,22 @@ spending off, to the project MCP config of each client it wires:
   `.cursorrules`.
 - VS Code (`--client vscode`): `.vscode/mcp.json` under `servers`, detected by
   `.vscode/mcp.json`.
+- Codex (`--client codex`): `.codex/config.toml`, appended as a
+  `[mcp_servers.verbatra]` table with `startup_timeout_sec = 60`, detected by a
+  `.codex/` folder. Codex loads it only after the human answers its "Trust this
+  folder?" prompt, which is keyed to the repository root.
+- Gemini CLI (`--client gemini`): `.gemini/settings.json` under `mcpServers`,
+  detected by a `.gemini/` folder or `GEMINI.md`. Gemini CLI reads only the
+  settings of the folder it starts in: the human starts `gemini` in the project
+  root and trusts it in the dialog or with `/permissions trust` (there is no
+  `gemini trust` command). It loads `GEMINI.md`, not `AGENTS.md`, so unless its
+  settings or `GEMINI.md` already load the instruction file, `nextSteps` says to
+  set `"context": { "fileName": ["AGENTS.md", "GEMINI.md"] }` in
+  `.gemini/settings.json` or add the line `@AGENTS.md` to `GEMINI.md`.
 
 With no marker at all, only Claude Code is wired. A `.vscode` folder without
 `mcp.json` is not wired; `nextSteps` suggests `init --agent --client vscode`.
-`--client claude,cursor,vscode` (or `all`) replaces detection and needs `--agent`;
+`--client claude,cursor,vscode,codex,gemini` (or `all`) replaces detection and needs `--agent`;
 an unknown id or an empty list fails with `INVALID_OPTION` and the accepted ids in
 `candidates`. `--dry-run` writes nothing, reports every file with the action it
 would take, and sets `dryRun: true`.
@@ -653,12 +665,12 @@ Branch on the failure `code`, all of them exit `2`:
 | --- | --- |
 | `MISSING_OPTIONS` | Pass the flags listed in `missing`, or `--yes` to take the defaults. `--yes` cannot fill a flag without a default: `openai-compatible` still needs `--base-url` and `--model`, and `libretranslate` needs `--base-url`. |
 | `INVALID_PROVIDER`, `INVALID_FORMAT` | Pass one of the values listed in `candidates`. |
-| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible` or `libretranslate`, `--cwd` names no existing directory, or `--client` is given without `--agent`, empty or with an unknown id (`candidates` lists `claude`, `cursor`, `vscode` and `all`). `doctor` raises it too, for `--locales` or `--live` together with `--literals` and for `--data-flow` together with `--literals`, `--locales` or `--live`, `pseudo` for an unknown `--mode`, and `check` for an empty `--file` or `--file` with `--locales`, `--consistency`, `--require-reviewed` or `--sensitive`. |
+| `INVALID_OPTION` | A flag does not fit the chosen provider, such as `--base-url` without `openai-compatible` or `libretranslate`, `--cwd` names no existing directory, or `--client` is given without `--agent`, empty or with an unknown id (`candidates` lists `claude`, `cursor`, `vscode`, `codex`, `gemini` and `all`). `doctor` raises it too, for `--locales` or `--live` together with `--literals` and for `--data-flow` together with `--literals`, `--locales` or `--live`, `pseudo` for an unknown `--mode`, and `check` for an empty `--file` or `--file` with `--locales`, `--consistency`, `--require-reviewed` or `--sensitive`. |
 | `INIT_UNWRITABLE` | `init` could not write a file into its directory, for example a read-only one, or `verbatra.config.ts`, `.env.example` or `.gitignore` is a symbolic link that resolves outside the project. The message names the file, the cause and any file already written; the hint says: Make the directory writable, or replace the symbolic link the message names with a plain file, then run `verbatra init` again. Tell the human rather than retrying. |
 | `FORMAT_AMBIGUOUS`, `LAYOUT_AMBIGUOUS` | Several fit; ask the human which of `candidates` is right and pass `--format` or `--path`. |
 | `CONFIG_EXISTS` | A `verbatra.config.ts` is already there (reported before any missing or ambiguous answer); an identical one passes as `unchanged`, a different one is refused; never add `--force` unless the human asked to replace it. Another config file verbatra would read first (or a `verbatra` key in `package.json`) is refused even with `--force`. |
 | `CONFIG_INVALID` | The answers do not form a valid config, including a `--source` or `--targets` locale that is not a BCP 47 code; the message says which field. |
-| `AGENT_FILE_INVALID` | With `--agent`: a client's MCP config is not plain JSON (comments or trailing commas, as JSONC allows), is not an object, holds a non-object under its servers key or repeats a key, the instruction file has unpaired or repeated verbatra markers, or a file sits behind a symbolic link `init` will not write through (an instruction file linking outside the project, a client file named with `--client`). The hint says: Repair the MCP config or the verbatra markers in the file the message names, or replace the symbolic link it names with a plain file, then run `verbatra init --agent` again. Show the human the message and let them fix the file. |
+| `AGENT_FILE_INVALID` | With `--agent`: a client's MCP config is not plain JSON (comments or trailing commas, as JSONC allows), is not an object, holds a non-object under its servers key or repeats a key, `.codex/config.toml` is TOML `init` cannot scan safely (an unterminated string, array or table header, or tables nested too deep) or defines `mcp_servers` or the verbatra server inline, with dotted keys, as an array of tables, or twice (the table or a key in it), the instruction file has unpaired or repeated verbatra markers, or a file sits behind a symbolic link `init` will not write through (an instruction file linking outside the project, a client file named with `--client`). The hint says: Repair the MCP config or the verbatra markers in the file the message names, or replace the symbolic link it names with a plain file, then run `verbatra init --agent` again. Show the human the message and let them fix the file by hand. |
 
 Re-running `init` with the same answers is safe: an identical
 `verbatra.config.ts` is reported `unchanged`, and a missing key variable is
