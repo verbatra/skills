@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { checkArguments } from "../hooks/check-locale-edit.mjs";
+import { checkArguments, fileCheckArguments } from "../hooks/check-locale-edit.mjs";
 
 const SKILLS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -29,8 +29,9 @@ const SPEND_GATED_CELL = "spend gated";
 const SHARED_SAFETY_BLOCK = [
   "1. Keys live in environment variables only. verbatra reads `ANTHROPIC_API_KEY`,",
   "   `OPENAI_API_KEY`, `GEMINI_API_KEY`, `DEEPL_API_KEY`,",
-  "   `GOOGLE_TRANSLATE_API_KEY`, or `OPENAI_COMPATIBLE_API_KEY` from the process",
-  "   environment. There is no key argument and no key field in the config file.",
+  "   `GOOGLE_TRANSLATE_API_KEY`, `OPENAI_COMPATIBLE_API_KEY`, or",
+  "   `LIBRETRANSLATE_API_KEY` from the process environment. There is no key",
+  "   argument and no key field in the config file.",
   "   Never write a key value into a file, a command line, a commit, or your own",
   "   output. Name the variable and let the human fill it in.",
   "2. Ask before spending. A real translate run bills the provider the moment it",
@@ -188,6 +189,11 @@ function providerEnvVars() {
     throw new Error("OPENAI_COMPATIBLE_ENV_VAR could not be located beside PROVIDER_ENV");
   }
   byId.set("openai-compatible", compatible[1]);
+  const libreTranslate = /LIBRETRANSLATE_ENV_VAR = "([A-Z_]+)"/.exec(source);
+  if (libreTranslate === null) {
+    throw new Error("LIBRETRANSLATE_ENV_VAR could not be located beside PROVIDER_ENV");
+  }
+  byId.set("libretranslate", libreTranslate[1]);
   return byId;
 }
 
@@ -473,6 +479,16 @@ const NUMBER_WORDS = [
   "eighteen",
   "nineteen",
   "twenty",
+  "twenty-one",
+  "twenty-two",
+  "twenty-three",
+  "twenty-four",
+  "twenty-five",
+  "twenty-six",
+  "twenty-seven",
+  "twenty-eight",
+  "twenty-nine",
+  "thirty",
 ];
 
 function spelled(count) {
@@ -481,6 +497,10 @@ function spelled(count) {
     throw new Error(`no spelled form for ${count}; extend NUMBER_WORDS`);
   }
   return word;
+}
+
+function spelledOrNone(count) {
+  return count === 0 ? "none" : spelled(count);
 }
 
 function rowsByAvailability(rows, availabilityIndex) {
@@ -571,13 +591,11 @@ describe("the cli skill enumerates the real doctor checks and sdk codes", () => 
     expect(doctorRows.map((cells) => backticked(cells[0]))).toEqual(doctorStandardRunIds());
   });
 
-  it("covers every declared doctor check id between the table and the --literals prose", () => {
-    const literalsOnly = doctorCheckIds().filter((id) => !doctorStandardRunIds().includes(id));
-    const doctor = sourceBlock(skill, "## doctor", "\n## ", "doctor section");
-    for (const id of literalsOnly) {
-      expect(doctor).toContain(`\`${id}\``);
-    }
-    expect([...doctorStandardRunIds(), ...literalsOnly].sort()).toEqual(doctorCheckIds().sort());
+  it("lists every check that replaces the setup run in its own table", () => {
+    const replacing = doctorCheckIds().filter((id) => !doctorStandardRunIds().includes(id));
+    const rows = tableRowsUnder(skill, "### Checks that replace the setup run", CLI_SKILL);
+    expect(rows.map((cells) => backticked(cells[0])).sort()).toEqual([...replacing].sort());
+    expect([...doctorStandardRunIds(), ...replacing].sort()).toEqual(doctorCheckIds().sort());
   });
 
   it("states the standard doctor check count the source declares", () => {
@@ -671,14 +689,15 @@ describe("the studio skill enumerates the real webmcp tool surface", () => {
 });
 
 describe("the two agent surfaces stay distinguishable", () => {
-  it("gives studio exactly the four methods the stdio registry does not have", () => {
+  it("gives studio no method the stdio registry does not have", () => {
     const stdio = new Set(mcpRegistry().all);
-    expect(studioRpcMethods().filter((method) => !stdio.has(method))).toEqual([
-      "history.list",
-      "key.context",
-      "locale.integrity",
-      "locale.values",
-    ]);
+    expect(studioRpcMethods().filter((method) => !stdio.has(method))).toEqual([]);
+  });
+
+  it("gives the stdio registry exactly the two tools studio does not have", () => {
+    const studio = new Set(studioRpcMethods());
+    const stdioOnly = mcpRegistry().all.filter((name) => !studio.has(name));
+    expect(stdioOnly).toEqual(["project.doctor", "report.provenance"]);
   });
 
   it("keeps the studio-only tools out of the stdio skill", () => {
@@ -709,12 +728,18 @@ describe("prose counts are derived, not remembered", () => {
   it("states both surface sizes and the size of the gap between them", () => {
     const stdio = mcpRegistry().all;
     const studio = studioRpcMethods();
+    const studioOnly = studio.filter((method) => !stdio.includes(method));
+    const stdioOnly = stdio.filter((name) => !studio.includes(name));
     const skill = readSkillFile(STUDIO_SKILL);
     expect(skill).toContain(
       `The stdio MCP server has\n${spelled(stdio.length)} tools with dotted names`,
     );
     expect(skill).toContain(`Studio has ${spelled(studio.length)}`);
-    expect(skill).toContain(`adds ${spelled(studio.length - stdio.length)} the stdio server`);
+    expect(skill).toContain(`adds ${spelledOrNone(studioOnly.length)} the stdio server`);
+    expect(skill).toContain(`lacks ${spelledOrNone(stdioOnly.length)} the stdio server has`);
+    for (const name of stdioOnly) {
+      expect(skill).toContain(`\`${name}\``);
+    }
   });
 
   it("names every spend-filtered stdio tool where it explains the boundary", () => {
@@ -743,12 +768,17 @@ describe("prose counts are derived, not remembered", () => {
 
   it("names every studio-only tool where it claims the surfaces differ", () => {
     const stdio = new Set(mcpRegistry().all);
+    const studioOnly = studioRpcMethods().filter((candidate) => !stdio.has(candidate));
     const skill = readSkillFile(STUDIO_SKILL);
     const claim = "are what this surface adds";
     const end = skill.indexOf(claim);
+    if (studioOnly.length === 0) {
+      expect(end).toBe(-1);
+      return;
+    }
     expect(end).toBeGreaterThan(-1);
     const sentence = skill.slice(skill.lastIndexOf("\n\n", end), end + claim.length);
-    for (const method of studioRpcMethods().filter((candidate) => !stdio.has(candidate))) {
+    for (const method of studioOnly) {
       expect(sentence).toContain(`\`${studioToolName(method)}\``);
     }
   });
@@ -872,6 +902,14 @@ describe("the plugin hook runs a check the cli actually offers", () => {
   it("passes only options the check command registers", () => {
     const block = checkCommandBlock();
     for (const flag of checkArguments("/project").filter((arg) => arg.startsWith("--"))) {
+      expect(block).toMatch(new RegExp(`\\.option\\(\\s*"${flag}[ "]`));
+    }
+  });
+
+  it("passes only options the check command registers to the single-file check", () => {
+    const block = checkCommandBlock();
+    const args = fileCheckArguments("/project", "/project/locales/de.json");
+    for (const flag of args.filter((arg) => arg.startsWith("--"))) {
       expect(block).toMatch(new RegExp(`\\.option\\(\\s*"${flag}[ "]`));
     }
   });

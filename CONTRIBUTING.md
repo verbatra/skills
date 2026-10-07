@@ -3,7 +3,7 @@
 This repository holds verbatra's own agent skills and nothing else. It is the only home for them;
 they used to live in `verbatra/verbatra` and no longer do.
 
-Requirements: Node.js `>=22.14.0` and `npm ci` once.
+Requirements: Node.js `>=22.18.0` and `npm ci` once.
 
 ## Adding a skill
 
@@ -60,13 +60,13 @@ compares them to the tables and the spelled-out counts in the three skill docume
 | `## Formats` table in `verbatra-cli` | `SUPPORTED_FORMATS` in `packages/core/src/model/supported-format.ts` |
 | `## Providers` first column in `verbatra-cli` | the `id` literals of `providerConfigSchema` in `packages/sdk/src/config/provider-config.ts`, every one but `none` backed by `providerFactories` |
 | `## Providers` second column in `verbatra-cli` | `PROVIDER_ENV` and `OPENAI_COMPATIBLE_ENV_VAR` in `packages/ai-providers/src/key-env-vars.ts`; `none` names no variable |
-| `## doctor` table in `verbatra-cli` | `"config"` then `CONFIG_DEPENDENT_IDS` in `packages/sdk/src/flow/doctor.ts`, in order; every other `DoctorCheckId` is named in the section's prose |
+| `## doctor` table in `verbatra-cli` | `"config"` then `CONFIG_DEPENDENT_IDS` in `packages/sdk/src/flow/doctor.ts`, in order; every other `DoctorCheckId` is a row of the `### Checks that replace the setup run` table under it |
 | `## Error and notice codes` table in `verbatra-cli` | every `SdkErrorCode` in `packages/sdk/src/errors.ts`, once each; any other code must be in `CLI_ERROR_CODES` in `packages/cli/src/cli-error-codes.ts`, which that table and the `init` failure table under `## Setting a project up` cover between them |
 | Notice code list under `## Error and notice codes` in `verbatra-cli` | `SdkNoticeCode` in `packages/sdk/src/flow/summary.ts` |
 | `## Tools` table in `verbatra-mcp-tools` | `ALL_TOOLS_IN_ORDER` and `SPEND_TOOL_NAMES` in `packages/mcp/src/tools/registry.ts`, cross-checked against every `name:` declared under `packages/mcp/src/tools/` |
 | `## Tools` table in `verbatra-studio-agent-tools` | `rpcParamsSchemas` in `packages/studio/src/shared/rpc/contract.ts` less `HUMAN_ONLY_METHOD_NAMES`, the `*_METHOD` constants beside it, and the `TOOL_DESCRIPTORS` (with their `spendGated` flag) in `packages/studio/src/webmcp/register-tools.ts`; every `HUMAN_ONLY_METHOD_NAMES` method is named under `## Two gates, not one` |
 | `.mcp.json` in the Claude Code plugin | the `version` in `packages/mcp/package.json`, and the flags and `ALLOW_SPEND_ENV_VAR` in `packages/mcp/src/bin.ts` |
-| `checkArguments` in `hooks/check-locale-edit.mjs` | the `check` command's `.option(...)` registrations in `packages/cli/src/run.ts` |
+| `checkArguments` and `fileCheckArguments` in `hooks/check-locale-edit.mjs` | the `check` command's `.option(...)` registrations in `packages/cli/src/run.ts` |
 | Counts spelled out in prose ("one of these fourteen", "registers ... but advertises only ...") | derived from the same registries, never remembered |
 | Frontmatter `description` in all three skills | the same registries, asserted negatively: a description must name at most two real identifiers, so it cannot grow back into a stale second index |
 
@@ -139,6 +139,20 @@ server is declared in `.mcp.json` and the hook in `hooks/hooks.json`, which runs
   the pending source release will produce, never an older one, so the plugin never starts a
   server older than the skills describe.
 - `npm test` covers the hook script with fixtures; it never needs a real verbatra.
+- To try the hook by hand against a real project, install a `@verbatra/cli` that knows
+  `check --file` in a project with a verbatra config and a German locale file, break a
+  placeholder in that file (turn `{name}` into `{nom}`), and feed the hook the event Claude
+  Code sends after an edit:
+
+  ```bash
+  echo '{"tool_name":"Edit","tool_input":{"file_path":"locales/de.json"},"cwd":"'"$PWD"'"}' \
+    | CLAUDE_PROJECT_DIR="$PWD" node /path/to/skills/hooks/check-locale-edit.mjs; echo "exit $?"
+  ```
+
+  It prints the finding on stderr and exits `2`. Break the JSON itself (drop a comma) and it
+  names the syntax error with its line and column; edit `src/app.ts` instead and it exits `0`
+  at once without starting verbatra. In a Claude Code session with the plugin installed, ask
+  Claude to make the same edit: the finding comes back to it as hook feedback.
 - Validate the manifests with Claude Code itself:
 
   ```bash
