@@ -3,7 +3,7 @@
 This repository holds verbatra's own agent skills and nothing else. It is the only home for them;
 they used to live in `verbatra/verbatra` and no longer do.
 
-Requirements: Node.js `>=22.14.0` and `npm ci` once.
+Requirements: Node.js `>=22.18.0` and `npm ci` once.
 
 ## Adding a skill
 
