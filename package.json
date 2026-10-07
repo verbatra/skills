@@ -19,7 +19,7 @@
     "check:discovery": "node scripts/check-discovery.mjs"
   },
   "devDependencies": {
-    "vitest": "5.0.2",
+    "vitest": "5.0.3",
     "yaml": "2.9.1"
   }
 }
