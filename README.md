@@ -8,22 +8,79 @@
   <a href="https://github.com/verbatra/skills/actions/workflows/validate.yml"><img src="https://img.shields.io/github/actions/workflow/status/verbatra/skills/validate.yml?branch=main&label=validate&color=7b1fa2&labelColor=0B0B12" alt="Validate" /></a>
   <a href="https://github.com/verbatra/skills/actions/workflows/parity.yml"><img src="https://img.shields.io/github/actions/workflow/status/verbatra/skills/parity.yml?branch=main&label=parity&color=7b1fa2&labelColor=0B0B12" alt="Tool parity" /></a>
   <a href="https://www.npmjs.com/package/@verbatra/cli"><img src="https://img.shields.io/npm/v/%40verbatra%2Fcli?label=%40verbatra%2Fcli&color=7b1fa2&labelColor=0B0B12" alt="@verbatra/cli on npm" /></a>
-  <a href="https://www.skills.sh/verbatra/skills"><img src="https://www.skills.sh/b/verbatra/skills" alt="verbatra/skills on skills.sh" /></a>
+  <a href="https://skills.sh/verbatra/skills"><img src="https://skills.sh/b/verbatra/skills" alt="verbatra/skills on skills.sh" /></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/verbatra/skills"><img src="https://img.shields.io/ossf-scorecard/github.com/verbatra/skills?label=openssf%20scorecard&labelColor=0B0B12" alt="OpenSSF Scorecard" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?color=7b1fa2&labelColor=0B0B12" alt="License: MIT" /></a>
 </p>
 
 ## Install
 
+Pick one route per agent: the plugin updates itself, while the installer copies editable
+files into your project and you update them by hand. Using both installs every skill twice.
+
+<details>
+<summary><strong>Claude Code</strong> (plugin, updates itself)</summary>
+
 ```bash
-npx skills@latest add verbatra/skills --skill verbatra-cli -a claude-code -y
+claude plugin marketplace add verbatra/skills
+claude plugin install verbatra@verbatra -s project
 ```
 
-Swap `claude-code` for your agent's id. The slugs are `verbatra-cli`, `verbatra-mcp-tools` and
-`verbatra-studio-agent-tools`; repeat `--skill` to pick a subset, or pass `--skill '*'` with the
-same `-a claude-code -y` to install all three. Add `-g` to install for your user instead of the
-current project. The install writes the skill into your agent directory and records a row in
-your own `skills-lock.json`.
+Brings the three skills, the verbatra MCP server with spending off, and a hook that
+checks edited locale files. See [Claude Code plugin](#claude-code-plugin) below.
+
+</details>
+
+<details>
+<summary><strong>Claude Code</strong> (skills only, editable files)</summary>
+
+```bash
+npx skills@latest add verbatra/skills --skill '*' -a claude-code -y
+```
+
+</details>
+
+<details>
+<summary><strong>Codex</strong></summary>
+
+```bash
+npx skills@latest add verbatra/skills --skill '*' -a codex -y
+```
+
+</details>
+
+<details>
+<summary><strong>Cursor</strong></summary>
+
+```bash
+npx skills@latest add verbatra/skills --skill '*' -a cursor -y
+```
+
+</details>
+
+<details>
+<summary><strong>Gemini CLI</strong></summary>
+
+```bash
+npx skills@latest add verbatra/skills --skill '*' -a gemini-cli -y
+```
+
+</details>
+
+<details>
+<summary><strong>Any other agent</strong></summary>
+
+```bash
+npx skills@latest add verbatra/skills -a <agent>  # omit -a to choose
+```
+
+</details>
+
+The slugs are `verbatra-cli`, `verbatra-mcp-tools` and `verbatra-studio-agent-tools`; repeat
+`--skill <slug>` to pick a subset. Add `-g` to install for your user instead of the current
+project. The install writes each skill folder, with its sibling reference files, into your agent
+directory and records a row in your own `skills-lock.json`. To update, run
+`npx skills@latest update`.
 
 ### Pinning a version
 

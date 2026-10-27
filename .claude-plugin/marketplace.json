@@ -10,7 +10,14 @@
       "name": "verbatra",
       "source": "./",
       "description": "The verbatra skills, the verbatra MCP server with spending off by default, and a hook that reports broken placeholders in edited locale files.",
-      "category": "development"
+      "category": "development",
+      "keywords": [
+        "i18n",
+        "l10n",
+        "translation",
+        "mcp",
+        "verbatra"
+      ]
     }
   ]
 }
