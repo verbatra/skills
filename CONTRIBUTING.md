@@ -25,7 +25,7 @@ Requirements: Node.js `>=22.18.0` and `npm ci` once.
 
    `name` must match `/^[a-z0-9]+(?:-[a-z0-9]+)*$/` and be at most 64 characters. `description` is
    what an agent reads to decide whether to load the skill, so it carries the trigger conditions,
-   not just a label; it is capped at 1024 characters. `metadata.source` always points at this
+   not just a label; it is capped at 500 characters by the validator (1024 is the installer's hard limit). `metadata.source` always points at this
    repository.
 
    **A description triggers loading; it does not index the surface.** Write the one-line summary,

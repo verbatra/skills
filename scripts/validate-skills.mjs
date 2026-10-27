@@ -10,6 +10,7 @@ const DEFAULT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const NAME_MAX_LENGTH = 64;
 const DESCRIPTION_MAX_LENGTH = 1024;
+const DESCRIPTION_LEAN_LENGTH = 500;
 const ALLOWED_MODES = new Set(["100644", "100755"]);
 const EM_DASH = "\u2014";
 const EMOJI_PATTERN = /\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}]|\uFE0F/gu;
@@ -162,6 +163,12 @@ function checkSkill(root, name, declaredBy, fail) {
     fail(
       `${relativePath}: frontmatter description is ${fields.description.length} ` +
         `characters, the limit is ${DESCRIPTION_MAX_LENGTH}`,
+    );
+  } else if (fields.description.length > DESCRIPTION_LEAN_LENGTH) {
+    fail(
+      `${relativePath}: frontmatter description is ${fields.description.length} ` +
+        `characters; keep it to ${DESCRIPTION_LEAN_LENGTH} or fewer, as triggers only, and ` +
+        "move detail into the body or a sibling file",
     );
   }
 }

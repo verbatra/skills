@@ -168,6 +168,15 @@ describe("every rule fires with a precise message", () => {
     );
   });
 
+  it("rule 8b: a description over the 500 character lean limit", () => {
+    const root = validFixture({
+      "skills/verbatra-cli/SKILL.md": skillFile("verbatra-cli", { description: "a".repeat(501) }),
+    });
+    expect(validateSkills(root)).toContain(
+      "skills/verbatra-cli/SKILL.md: frontmatter description is 501 characters; keep it to 500 or fewer, as triggers only, and move detail into the body or a sibling file",
+    );
+  });
+
   it("rule 9: two directories declaring the same name", () => {
     const root = fixture({
       "README.md": readmeFor(["verbatra-cli", "verbatra-cli-copy"]),
