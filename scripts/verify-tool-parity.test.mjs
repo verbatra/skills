@@ -750,6 +750,20 @@ describe("the two agent surfaces stay distinguishable", () => {
     expect(stdioOnly).toEqual(["project.doctor", "report.provenance"]);
   });
 
+  it("names the stdio-only tools in the stdio skill entry where it contrasts the surfaces", () => {
+    const studio = new Set(studioRpcMethods());
+    const stdioOnly = mcpRegistry().all.filter((name) => !studio.has(name));
+    const entry = readSkillFile(MCP_SKILL).replaceAll(/\s+/g, " ");
+    const claim = "except ";
+    const start = entry.indexOf(claim);
+    expect(start).toBeGreaterThan(-1);
+    const sentence = entry.slice(start, entry.indexOf("exist only here", start));
+    for (const name of stdioOnly) {
+      expect(sentence).toContain(`\`${name}\``);
+    }
+    expect(sentence.match(/`[a-z]+\.[A-Za-z]+`/g)).toHaveLength(stdioOnly.length);
+  });
+
   it("keeps the studio-only tools out of the stdio skill", () => {
     const mcpSkill = skillText(MCP_DIR);
     const stdio = new Set(mcpRegistry().all);
