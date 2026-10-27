@@ -39,6 +39,9 @@ function fixture(files) {
   const root = mkdtempSync(resolve(tmpdir(), "verbatra-skills-fixture-"));
   created.push(root);
   for (const [relativePath, content] of Object.entries(files)) {
+    if (content === null) {
+      continue;
+    }
     const absolute = resolve(root, relativePath);
     mkdirSync(dirname(absolute), { recursive: true });
     writeFileSync(absolute, content);
@@ -48,10 +51,14 @@ function fixture(files) {
   return root;
 }
 
+const GOOD_INTERFACE =
+  'interface:\n  display_name: "verbatra CLI"\n  short_description: "Run verbatra safely"\n';
+
 function validFixture(overrides = {}) {
   return fixture({
     "README.md": readmeFor(["verbatra-cli"]),
     "skills/verbatra-cli/SKILL.md": skillFile("verbatra-cli"),
+    "skills/verbatra-cli/agents/openai.yaml": GOOD_INTERFACE,
     ...overrides,
   });
 }
@@ -174,6 +181,29 @@ describe("every rule fires with a precise message", () => {
     });
     expect(validateSkills(root)).toContain(
       "skills/verbatra-cli/SKILL.md: frontmatter description is 501 characters; keep it to 500 or fewer, as triggers only, and move detail into the body or a sibling file",
+    );
+  });
+
+  it("rule 8c: a description of exactly 500 characters is accepted", () => {
+    const root = validFixture({
+      "skills/verbatra-cli/SKILL.md": skillFile("verbatra-cli", { description: "a".repeat(500) }),
+    });
+    expect(validateSkills(root)).toEqual([]);
+  });
+
+  it("rule 10: a skill without agents/openai.yaml", () => {
+    const root = validFixture({ "skills/verbatra-cli/agents/openai.yaml": null });
+    expect(validateSkills(root)).toContain(
+      "skills/verbatra-cli/agents/openai.yaml: missing; every skill needs an interface file with display_name and short_description",
+    );
+  });
+
+  it("rule 10: an interface without a short_description", () => {
+    const root = validFixture({
+      "skills/verbatra-cli/agents/openai.yaml": 'interface:\n  display_name: "verbatra CLI"\n',
+    });
+    expect(validateSkills(root)).toContain(
+      "skills/verbatra-cli/agents/openai.yaml: interface.short_description must be a non-empty string",
     );
   });
 
