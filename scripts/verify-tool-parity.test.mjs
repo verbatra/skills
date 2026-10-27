@@ -24,6 +24,23 @@ const STUDIO_SKILL = "skills/verbatra-studio-agent-tools/SKILL.md";
 
 const SKILL_FILES = [CLI_SKILL, MCP_SKILL, STUDIO_SKILL];
 
+const CLI_DIR = "skills/verbatra-cli";
+const MCP_DIR = "skills/verbatra-mcp-tools";
+const STUDIO_DIR = "skills/verbatra-studio-agent-tools";
+
+const CLI_COMMANDS_DOC = `${CLI_DIR}/COMMANDS.md`;
+const CLI_FORMATS_DOC = `${CLI_DIR}/FORMATS.md`;
+const CLI_PROVIDERS_DOC = `${CLI_DIR}/PROVIDERS.md`;
+const CLI_DOCTOR_DOC = `${CLI_DIR}/DOCTOR.md`;
+const CLI_ERRORS_DOC = `${CLI_DIR}/ERROR-CODES.md`;
+const CLI_INIT_DOC = `${CLI_DIR}/INIT.md`;
+const MCP_TOOLS_DOC = `${MCP_DIR}/TOOLS.md`;
+const MCP_SPEND_DOC = `${MCP_DIR}/SPEND-BOUNDARY.md`;
+const STUDIO_TOOLS_DOC = `${STUDIO_DIR}/TOOLS.md`;
+const STUDIO_GATES_DOC = `${STUDIO_DIR}/GATES.md`;
+
+const SKILL_DIRECTORIES = [CLI_DIR, MCP_DIR, STUDIO_DIR];
+
 const SPEND_GATED_CELL = "spend gated";
 
 const SHARED_SAFETY_BLOCK = [
@@ -59,6 +76,18 @@ function readSkillFile(relativePath) {
 
 function readSourceFile(relativePath) {
   return readFileSync(resolve(SOURCE_ROOT, relativePath), "utf8");
+}
+
+function skillText(directory) {
+  return markdownFilesIn(directory)
+    .map((file) => readSkillFile(`${directory}/${file}`))
+    .join("\n");
+}
+
+function markdownFilesIn(directory) {
+  return readdirSync(resolve(SKILLS_ROOT, directory))
+    .filter((entry) => entry.endsWith(".md"))
+    .sort();
 }
 
 function sourceBlock(source, opening, closing, label) {
@@ -249,20 +278,20 @@ function allBackticked(cell) {
 }
 
 function skillErrorCodes() {
-  return tableRowsUnder(readSkillFile(CLI_SKILL), "## Error and notice codes", CLI_SKILL).flatMap(
+  return tableRowsUnder(readSkillFile(CLI_ERRORS_DOC), "## Error and notice codes", CLI_ERRORS_DOC).flatMap(
     (cells) => allBackticked(cells[0]),
   );
 }
 
 function skillInitCodes() {
-  return tableRowsUnder(readSkillFile(CLI_SKILL), "## Setting a project up", CLI_SKILL).flatMap(
+  return tableRowsUnder(readSkillFile(CLI_INIT_DOC), "## Setting a project up", CLI_INIT_DOC).flatMap(
     (cells) => allBackticked(cells[0]),
   );
 }
 
 function skillNoticeCodes() {
   const sentence = sourceBlock(
-    readSkillFile(CLI_SKILL),
+    readSkillFile(CLI_ERRORS_DOC),
     "`result.locales[].notices` with a `code`:",
     "plus the codes a provider raises",
     "notice code list",
@@ -525,6 +554,26 @@ describe("every skill in the pack carries installable frontmatter", () => {
   });
 });
 
+describe("every skill is a lean entry that links all of its depth files", () => {
+  it.each(SKILL_DIRECTORIES)("%s links every sibling markdown file and no missing one", (directory) => {
+    const entry = readSkillFile(`${directory}/SKILL.md`);
+    const siblings = markdownFilesIn(directory).filter((file) => file !== "SKILL.md");
+    expect(siblings.length).toBeGreaterThan(0);
+    for (const file of siblings) {
+      expect(entry, `${directory}/SKILL.md does not link ${file}`).toContain(`](${file})`);
+    }
+    const linked = [...entry.matchAll(/\]\(([A-Z][A-Z-]*\.md)\)/g)].map((match) => match[1]);
+    for (const file of linked) {
+      expect(siblings, `${directory}/SKILL.md links ${file}, which does not exist`).toContain(file);
+    }
+  });
+
+  it.each(SKILL_DIRECTORIES)("%s entry stays within 200 lines", (directory) => {
+    const lines = readSkillFile(`${directory}/SKILL.md`).split("\n").length;
+    expect(lines).toBeLessThanOrEqual(200);
+  });
+});
+
 describe("a description triggers loading; the body table is what indexes the surface", () => {
   it.each(SKILL_FILES)("%s does not enumerate the surface it documents", (path) => {
     const { description } = frontmatter(readSkillFile(path));
@@ -541,19 +590,19 @@ describe("a description triggers loading; the body table is what indexes the sur
 
 describe("the cli skill enumerates the real cli surface", () => {
   it("lists exactly the commands run.ts registers", () => {
-    expect(firstColumn(tableRowsUnder(readSkillFile(CLI_SKILL), "## Commands", CLI_SKILL))).toEqual(
+    expect(firstColumn(tableRowsUnder(readSkillFile(CLI_COMMANDS_DOC), "## Commands", CLI_COMMANDS_DOC))).toEqual(
       cliCommands(),
     );
   });
 
   it("lists exactly the formats the core format union declares", () => {
-    expect(firstColumn(tableRowsUnder(readSkillFile(CLI_SKILL), "## Formats", CLI_SKILL))).toEqual(
+    expect(firstColumn(tableRowsUnder(readSkillFile(CLI_FORMATS_DOC), "## Formats", CLI_FORMATS_DOC))).toEqual(
       supportedFormats(),
     );
   });
 
   it("lists exactly the provider ids the sdk config schema accepts", () => {
-    expect(firstColumn(tableRowsUnder(readSkillFile(CLI_SKILL), "## Providers", CLI_SKILL))).toEqual(
+    expect(firstColumn(tableRowsUnder(readSkillFile(CLI_PROVIDERS_DOC), "## Providers", CLI_PROVIDERS_DOC))).toEqual(
       providerIds(),
     );
   });
@@ -565,7 +614,7 @@ describe("the cli skill enumerates the real cli surface", () => {
   it("names the environment variable each provider actually reads", () => {
     const factories = new Set(providerFactoryIds());
     const documented = new Map(
-      tableRowsUnder(readSkillFile(CLI_SKILL), "## Providers", CLI_SKILL).map((cells) => [
+      tableRowsUnder(readSkillFile(CLI_PROVIDERS_DOC), "## Providers", CLI_PROVIDERS_DOC).map((cells) => [
         backticked(cells[0]),
         backticked(cells[1]),
       ]),
@@ -576,7 +625,7 @@ describe("the cli skill enumerates the real cli surface", () => {
 
   it("names no key variable for a provider id that constructs no provider", () => {
     const factories = new Set(providerFactoryIds());
-    const rows = tableRowsUnder(readSkillFile(CLI_SKILL), "## Providers", CLI_SKILL);
+    const rows = tableRowsUnder(readSkillFile(CLI_PROVIDERS_DOC), "## Providers", CLI_PROVIDERS_DOC);
     for (const cells of rows.filter((row) => !factories.has(backticked(row[0])))) {
       expect(backticked(cells[1])).toBeUndefined();
     }
@@ -584,8 +633,9 @@ describe("the cli skill enumerates the real cli surface", () => {
 });
 
 describe("the cli skill enumerates the real doctor checks and sdk codes", () => {
-  const skill = readSkillFile(CLI_SKILL);
-  const doctorRows = tableRowsUnder(skill, "## doctor", CLI_SKILL);
+  const doctorDoc = readSkillFile(CLI_DOCTOR_DOC);
+  const errorsDoc = readSkillFile(CLI_ERRORS_DOC);
+  const doctorRows = tableRowsUnder(doctorDoc, "## doctor", CLI_DOCTOR_DOC);
 
   it("lists the standard doctor checks in the order a run reports them", () => {
     expect(doctorRows.map((cells) => backticked(cells[0]))).toEqual(doctorStandardRunIds());
@@ -593,13 +643,13 @@ describe("the cli skill enumerates the real doctor checks and sdk codes", () => 
 
   it("lists every check that replaces the setup run in its own table", () => {
     const replacing = doctorCheckIds().filter((id) => !doctorStandardRunIds().includes(id));
-    const rows = tableRowsUnder(skill, "### Checks that replace the setup run", CLI_SKILL);
+    const rows = tableRowsUnder(doctorDoc, "### Checks that replace the setup run", CLI_DOCTOR_DOC);
     expect(rows.map((cells) => backticked(cells[0])).sort()).toEqual([...replacing].sort());
     expect([...doctorStandardRunIds(), ...replacing].sort()).toEqual(doctorCheckIds().sort());
   });
 
   it("states the standard doctor check count the source declares", () => {
-    expect(skill).toContain(`always these ${spelled(doctorStandardRunIds().length)} in this order`);
+    expect(doctorDoc).toContain(`always these ${spelled(doctorStandardRunIds().length)} in this order`);
   });
 
   it("lists every SdkErrorCode in the error code table", () => {
@@ -629,7 +679,7 @@ describe("the cli skill enumerates the real doctor checks and sdk codes", () => 
   });
 
   it("names the exported code list where it describes the codes the cli raises", () => {
-    const codes = sourceBlock(skill, "## Error and notice codes", "\n## ", "error codes section");
+    const codes = sourceBlock(`${errorsDoc}\n## end`, "## Error and notice codes", "\n## ", "error codes section");
     expect(codes).toContain("`CLI_ERROR_CODES` from `@verbatra/cli`");
     expect(readSourceFile("packages/cli/src/lib.ts")).toMatch(
       /export \{[^}]*\bCLI_ERROR_CODES\b[^}]*\} from "\.\/cli-error-codes\.js";/,
@@ -642,7 +692,7 @@ describe("the cli skill enumerates the real doctor checks and sdk codes", () => 
 });
 
 describe("the mcp skill enumerates the real stdio tool registry", () => {
-  const rows = tableRowsUnder(readSkillFile(MCP_SKILL), "## Tools", MCP_SKILL);
+  const rows = tableRowsUnder(readSkillFile(MCP_TOOLS_DOC), "## Tools", MCP_TOOLS_DOC);
 
   it("resolves every registered tool identifier to a declared tool name", () => {
     expect(mcpRegistry().all).toEqual(declaredMcpToolNames());
@@ -658,7 +708,7 @@ describe("the mcp skill enumerates the real stdio tool registry", () => {
 });
 
 describe("the studio skill enumerates the real webmcp tool surface", () => {
-  const rows = tableRowsUnder(readSkillFile(STUDIO_SKILL), "## Tools", STUDIO_SKILL);
+  const rows = tableRowsUnder(readSkillFile(STUDIO_TOOLS_DOC), "## Tools", STUDIO_TOOLS_DOC);
 
   it("lists exactly the rpc methods the contract declares for agents", () => {
     expect(rows.map((cells) => backticked(cells[1])).sort()).toEqual(studioRpcMethods());
@@ -701,7 +751,7 @@ describe("the two agent surfaces stay distinguishable", () => {
   });
 
   it("keeps the studio-only tools out of the stdio skill", () => {
-    const mcpSkill = readSkillFile(MCP_SKILL);
+    const mcpSkill = skillText(MCP_DIR);
     const stdio = new Set(mcpRegistry().all);
     for (const method of studioRpcMethods().filter((candidate) => !stdio.has(candidate))) {
       expect(mcpSkill).not.toContain(`\`${method}\``);
@@ -712,14 +762,14 @@ describe("the two agent surfaces stay distinguishable", () => {
 describe("prose counts are derived, not remembered", () => {
   it("states the format-set size the core union actually declares", () => {
     const formats = supportedFormats();
-    expect(readSkillFile(CLI_SKILL)).toContain(
+    expect(readSkillFile(CLI_FORMATS_DOC)).toContain(
       `\`format\` in the config is one of these ${spelled(formats.length)}.`,
     );
   });
 
   it("states the registered and default-advertised stdio tool counts", () => {
     const { all, spendGated } = mcpRegistry();
-    expect(readSkillFile(MCP_SKILL)).toContain(
+    expect(readSkillFile(MCP_SPEND_DOC)).toContain(
       `The server registers ${spelled(all.length)} tools but advertises only ` +
         `${spelled(all.length - spendGated.length)} by default.`,
     );
@@ -743,24 +793,24 @@ describe("prose counts are derived, not remembered", () => {
   });
 
   it("names every spend-filtered stdio tool where it explains the boundary", () => {
-    const skill = readSkillFile(MCP_SKILL);
-    const boundary = sourceBlock(skill, "## The spend boundary", "\n## ", "spend boundary");
+    const skill = readSkillFile(MCP_SPEND_DOC);
+    const boundary = sourceBlock(`${skill}\n## end`, "## The spend boundary", "\n## ", "spend boundary");
     for (const name of mcpRegistry().spendGated) {
       expect(boundary).toContain(`\`${name}\``);
     }
   });
 
   it("names every method reserved for a person where it explains the human-only boundary", () => {
-    const skill = readSkillFile(STUDIO_SKILL);
-    const gates = sourceBlock(skill, "## Two gates, not one", "\n## ", "two gates");
+    const skill = readSkillFile(STUDIO_GATES_DOC);
+    const gates = sourceBlock(`${skill}\n## end`, "## Two gates, not one", "\n## ", "two gates");
     for (const method of studioHumanOnlyMethods()) {
       expect(gates).toContain(`\`${method}\``);
     }
   });
 
   it("names every spend-gated studio tool where it explains the second gate", () => {
-    const skill = readSkillFile(STUDIO_SKILL);
-    const gates = sourceBlock(skill, "## Two gates, not one", "\n## ", "two gates");
+    const skill = readSkillFile(STUDIO_GATES_DOC);
+    const gates = sourceBlock(`${skill}\n## end`, "## Two gates, not one", "\n## ", "two gates");
     for (const method of studioSpendGatedMethods()) {
       expect(gates).toContain(`\`${studioToolName(method)}\``);
     }
@@ -769,7 +819,7 @@ describe("prose counts are derived, not remembered", () => {
   it("names every studio-only tool where it claims the surfaces differ", () => {
     const stdio = new Set(mcpRegistry().all);
     const studioOnly = studioRpcMethods().filter((candidate) => !stdio.has(candidate));
-    const skill = readSkillFile(STUDIO_SKILL);
+    const skill = skillText(STUDIO_DIR);
     const claim = "are what this surface adds";
     const end = skill.indexOf(claim);
     if (studioOnly.length === 0) {
@@ -786,7 +836,7 @@ describe("prose counts are derived, not remembered", () => {
   it("states how many studio tools survive a session without spend", () => {
     const studio = studioRpcMethods();
     const gated = studioSpendGatedMethods();
-    expect(readSkillFile(STUDIO_SKILL)).toContain(
+    expect(readSkillFile(STUDIO_GATES_DOC)).toContain(
       `The other ${spelled(studio.length - gated.length)} register either way.`,
     );
   });
