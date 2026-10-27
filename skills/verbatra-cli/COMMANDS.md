@@ -104,3 +104,21 @@ authorises an unbounded series of them, one per source-file save, for as long as
 the process lives, with no further prompt. Say that in those words before you
 start one, and prefer a single `translate` when the human only wanted the keys
 that are pending right now translated.
+
+## Flags that are easy to miss
+
+- `translate --no-cache` and `watch --no-cache` bypass the local translation-memory
+  cache (`verbatra.cache.json`) for the run, so keys the memory could have filled go to
+  the provider and are billed. Never pass it to save time.
+- `watch --debounce <ms>` waits that many milliseconds after a change before
+  translating (default `300`, a whole number up to `60000`; anything else exits `2`
+  with `INVALID_DEBOUNCE`).
+- `export --include-unchanged` also writes already up-to-date strings into the
+  handoff; without it only what is missing or stale is exported.
+- `studio --port <n>` overrides the default Studio port (1 to 65535; anything else
+  exits `2` with `INVALID_PORT`).
+- `pseudo --locale <code>` names the pseudolocale to generate: `en-XA` by default,
+  `ar-XB` with `--mode bidi`.
+
+`import` writes keys the target did not have yet in source order. A run creates no
+target file for a locale whose keys were all withheld, so nothing empty is left behind.

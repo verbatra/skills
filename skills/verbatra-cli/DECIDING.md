@@ -85,3 +85,21 @@ drop it with `--locales` or ask the human; never map it in `localeMap` on your o
 to get past the refusal.
 
 Never run `verbatra translate` to find out whether there is anything to do.
+
+## Review reasons worth knowing
+
+A review reason is a per-key signal that a person should look at a value. It is never
+a model self-score; verbatra computes it from the source and the translation. Two are
+easy to misread:
+
+- `LENGTH_RATIO_OUTLIER`: the translation is far shorter or longer than the source.
+  Length is counted in graphemes weighted by script so it is Latin-equivalent: a Han
+  character counts 3.5, a Hiragana or Katakana character 1.5, a Hangul syllable 2 and
+  anything else 1. A correct CJK translation is therefore not flagged for its script
+  alone, and a CJK source into a Latin target can flag where 0.11 did not. It is
+  relative to the source; `MAX_LENGTH_EXCEEDED` is the absolute per-key budget.
+- `GLOSSARY_FORBIDDEN_TERM`: the translation uses a rendering the glossary forbids
+  for that target locale. It is matched as a whole word, or by containment for scripts
+  written without word separators, so an inflected or compounded form is caught only
+  when it is listed too, and a rendering the source itself contains is not flagged.
+  Fix the translation, or ask the human whether the glossary is wrong.

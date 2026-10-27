@@ -50,3 +50,18 @@ connect; when both are set, a host must satisfy each, and an invalid environment
 value fails with `CONFIG_INVALID` instead of allowing every host. A refused host
 fails a real run with `NETWORK_POLICY_VIOLATION` before any key is read or request
 sent. `doctor` reports the effective policy in its `network-policy` check.
+
+## Provider options that are easy to get wrong
+
+- `requestTimeoutMs` (default `120000`) bounds each request attempt, not the whole
+  retried call. When retries run out, the failure reports the last attempt's code:
+  `RATE_LIMITED`, `PROVIDER_UNAVAILABLE`, `PROVIDER_ERROR` or `TIMEOUT`. Gemini
+  retries a timed-out attempt. Raise it for a slow local model rather than retrying
+  by hand.
+- `opencode` is configured as
+  `provider: { id: "opencode", options: { model, maxOutputTokens } }`. It reads
+  `OPENCODE_API_KEY` itself and takes no `baseUrl`.
+- An `openai-compatible` `apiKeyEnvVar` that names a hosted provider's key variable,
+  `OPENCODE_API_KEY` included, fails the config with `CONFIG_INVALID`, so a hosted key
+  never reaches an arbitrary `baseUrl`. Use the hosted provider's own `id`, or name a
+  different variable.

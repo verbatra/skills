@@ -156,3 +156,8 @@
   write, and leave those terms to a human. The same holds for any result: every
   value passes the same redaction, so never send a `[REDACTED]` value to
   `translation.editEntry` either.
+
+- A `usage.summary` or `review.queue` that reports no last run after a 0.12 run, on
+  `@verbatra/mcp` 0.2, is an upgrade mismatch: a 0.12 run records a review reason the
+  older server cannot read. Upgrade `@verbatra/mcp`, or delete
+  `.verbatra-local/run-status.json` with the operator's say-so.

@@ -111,3 +111,8 @@
   surface passes it, so a `prune: true` project deletes orphaned keys on any run
   you start with `verbatra_translation_translatePending`, exactly as rule 5
   describes.
+
+- `verbatra_usage_summary` and `verbatra_review_queue` showing no last run after a
+  0.12 run, on `@verbatra/studio` 0.5, is an upgrade mismatch: a 0.12 run records a
+  review reason the older Studio cannot read. The operator upgrades `@verbatra/studio`
+  or deletes `.verbatra-local/run-status.json`.
