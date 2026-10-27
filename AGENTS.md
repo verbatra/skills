@@ -13,7 +13,7 @@ The five shared safety rules are repeated verbatim in each `SKILL.md` and assert
 
 Checks: `npm run validate`, `npm test`, `npm run check:discovery`, and `SOURCE_ROOT=<verbatra checkout> npm run test:parity`. See `CONTRIBUTING.md` for the release checklist.
 
-Every skill in `skills/` must be indexed in `README.md`. The pinned `@verbatra/mcp` version in `.mcp.json` must equal the version the pending source release produces.
+Every skill in `skills/` must be indexed in `README.md`. The pinned `@verbatra/mcp` version in `.mcp.json` must equal the `version` in `packages/mcp/package.json` at the source ref the parity suite runs against. On a release-prep branch it is set to the pending release, so that one test fails until that version is published, then goes green.
 
 No em dashes (U+2014) and no emoji anywhere in this repo. Rewrite the sentence with a colon, comma, parentheses or a spaced hyphen. English only.
 

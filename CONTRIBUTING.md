@@ -25,8 +25,8 @@ Requirements: Node.js `>=22.18.0` and `npm ci` once.
 
    `name` must match `/^[a-z0-9]+(?:-[a-z0-9]+)*$/` and be at most 64 characters. `description` is
    what an agent reads to decide whether to load the skill, so it carries the trigger conditions,
-   not just a label; it is capped at 500 characters by the validator (1024 is the installer's hard limit). `metadata.source` always points at this
-   repository.
+   not just a label; it is capped at 500 characters by the validator
+   (1024 is the installer's hard limit). `metadata.source` always points at this repository.
 
    **A description triggers loading; it does not index the surface.** Write the one-line summary,
    the "Use when ..." trigger conditions, and a closing clause naming what the skill covers in
@@ -135,9 +135,10 @@ server is declared in `.mcp.json` and the hook in `hooks/hooks.json`, which runs
 `hooks/check-locale-edit.mjs`.
 
 - The pinned `@verbatra/mcp` version in `.mcp.json` must equal the `version` in
-  `packages/mcp/package.json` at the source ref the parity suite runs against. Pin the version
-  the pending source release will produce, never an older one, so the plugin never starts a
-  server older than the skills describe.
+  `packages/mcp/package.json` at the source ref the parity suite runs against. On a release-prep
+  branch the pin is the pending release, so that check fails until that version is published,
+  then goes green. Never pin an older one, so the plugin never starts a server older than the
+  skills describe.
 - `npm test` covers the hook script with fixtures; it never needs a real verbatra.
 - To try the hook by hand against a real project, install a `@verbatra/cli` that knows
   `check --file` in a project with a verbatra config and a German locale file, break a

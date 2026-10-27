@@ -15,8 +15,9 @@
 
 ## Install
 
-Pick one route per agent: the plugin updates itself, while the installer copies editable
-files into your project and you update them by hand. Using both installs every skill twice.
+Pick one route per agent: the plugin updates itself, while the installer links the skills into
+your agent directory (it symlinks by default; pass `--copy` for editable copies) and you update
+them with `npx skills@latest update`. Using both installs every skill twice.
 
 <details>
 <summary><strong>Claude Code</strong> (plugin, updates itself)</summary>
@@ -78,7 +79,7 @@ npx skills@latest add verbatra/skills -a <agent>  # omit -a to choose
 
 The slugs are `verbatra-cli`, `verbatra-mcp-tools` and `verbatra-studio-agent-tools`; repeat
 `--skill <slug>` to pick a subset. Add `-g` to install for your user instead of the current
-project. The install writes each skill folder, with its sibling reference files, into your agent
+project. The install places each skill folder, with its sibling reference files, in your agent
 directory and records a row in your own `skills-lock.json`. To update, run
 `npx skills@latest update`.
 
@@ -148,8 +149,9 @@ What the plugin adds:
   `verbatra-studio-agent-tools`, exactly as listed below.
 - **The MCP server** `verbatra`: `npx -y @verbatra/mcp@<version> --cwd <project>`,
   run over the project Claude Code has open. The version is pinned in
-  [`.mcp.json`](./.mcp.json), and the parity workflow fails whenever the pin differs
-  from the `@verbatra/mcp` version in the source repository. Without a usable verbatra config
+  [`.mcp.json`](./.mcp.json) and must equal the `version` in `packages/mcp/package.json`
+  at the source ref the parity workflow runs against; on a release-prep branch the pin
+  is the pending release, so that check fails until the version is published. Without a usable verbatra config
   in the project it still starts, but only `project.snapshot` and `project.doctor`
   work: run `npx @verbatra/cli init` there, and the next tool call picks the config up
   without a restart. It reads a provider API key from
@@ -209,8 +211,8 @@ next to this one and reads `packages/cli/src/run.ts`, `packages/core/src/model/s
 `packages/sdk/src/config/provider-config.ts`, `packages/ai-providers/src/key-env-vars.ts`,
 `packages/mcp/src/tools/`, `packages/mcp/src/bin.ts`, `packages/mcp/package.json`,
 `packages/studio/src/shared/rpc/` and `packages/studio/src/webmcp/register-tools.ts`. The
-same suite asserts the plugin: the pinned `@verbatra/mcp` version against the last
-release, the server flags and the spend variable against the server's own entry point,
+same suite asserts the plugin: the pinned `@verbatra/mcp` version against
+`packages/mcp/package.json` at the source ref, the server flags and the spend variable against the server's own entry point,
 and the hook's `check` options against the CLI. It runs on every push to `main` and every pull
 request targeting `main`, on a nightly schedule so that a change made only in the source
 repository is still caught, and on a `workflow_dispatch` that takes the source ref to assert
