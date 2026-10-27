@@ -10,6 +10,8 @@ const DEFAULT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const NAME_MAX_LENGTH = 64;
 const DESCRIPTION_MAX_LENGTH = 1024;
+const DESCRIPTION_LEAN_LENGTH = 500;
+const AGENT_INTERFACE_FIELDS = ["display_name", "short_description"];
 const ALLOWED_MODES = new Set(["100644", "100755"]);
 const EM_DASH = "\u2014";
 const EMOJI_PATTERN = /\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}]|\uFE0F/gu;
@@ -163,6 +165,37 @@ function checkSkill(root, name, declaredBy, fail) {
       `${relativePath}: frontmatter description is ${fields.description.length} ` +
         `characters, the limit is ${DESCRIPTION_MAX_LENGTH}`,
     );
+  } else if (fields.description.length > DESCRIPTION_LEAN_LENGTH) {
+    fail(
+      `${relativePath}: frontmatter description is ${fields.description.length} ` +
+        `characters; keep it to ${DESCRIPTION_LEAN_LENGTH} or fewer, as triggers only, and ` +
+        "move detail into the body or a sibling file",
+    );
+  }
+}
+
+function checkAgentInterface(root, name, fail) {
+  const relativePath = `skills/${name}/agents/openai.yaml`;
+  let content;
+  try {
+    content = readFileSync(resolve(root, relativePath), "utf8");
+  } catch {
+    fail(`${relativePath}: missing; every skill needs an interface file with display_name and short_description`);
+    return;
+  }
+  let fields;
+  try {
+    fields = parseYaml(content);
+  } catch (error) {
+    fail(`${relativePath}: not valid YAML: ${error.message.split("\n")[0]}`);
+    return;
+  }
+  const declared = fields?.interface;
+  for (const field of AGENT_INTERFACE_FIELDS) {
+    const value = declared?.[field];
+    if (typeof value !== "string" || value.trim() === "") {
+      fail(`${relativePath}: interface.${field} must be a non-empty string`);
+    }
   }
 }
 
@@ -237,6 +270,7 @@ export function validateSkills(root) {
   const declaredBy = new Map();
   for (const name of names) {
     checkSkill(root, name, declaredBy, fail);
+    checkAgentInterface(root, name, fail);
   }
 
   const modes = gitFileModes(root, fail);
