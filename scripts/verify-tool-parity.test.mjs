@@ -744,10 +744,10 @@ describe("the two agent surfaces stay distinguishable", () => {
     expect(studioRpcMethods().filter((method) => !stdio.has(method))).toEqual([]);
   });
 
-  it("gives the stdio registry exactly the two tools studio does not have", () => {
+  it("gives the stdio registry exactly the three tools studio does not have", () => {
     const studio = new Set(studioRpcMethods());
     const stdioOnly = mcpRegistry().all.filter((name) => !studio.has(name));
-    expect(stdioOnly).toEqual(["project.doctor", "report.provenance"]);
+    expect(stdioOnly).toEqual(["history.keyRevisions", "project.doctor", "report.provenance"]);
   });
 
   it("names the stdio-only tools in the stdio skill entry where it contrasts the surfaces", () => {
