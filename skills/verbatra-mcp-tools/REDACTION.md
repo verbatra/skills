@@ -11,8 +11,8 @@ starts the server with `verbatra mcp --redact-values` (or `verbatra-mcp
   reviewer and author names are left out. `history.keyRevisions` goes
   further: each revision's `value` is a marker, and its `diff`, `author` and
   `subject` are left out (a subject can quote a value), as is the `diff` of
-  `workingTree`; commits, dates, `origin` and `sourceChanged` stay. Equal values share a hash, but only
-  until the server stops. An error message that can carry values, such as a
+  `workingTree`; commits, dates, `origin` and `sourceChanged` stay. Equal
+  values share a hash, but only until the server stops. An error message that can carry values, such as a
   config, glossary or file error, is replaced whole by one marker; its code and
   `Next step:` line stay. Key names, counts, statuses, origins, integrity verdicts, commit
   subjects from `history.list`, and paths are not redacted. A `history.list`
@@ -34,7 +34,9 @@ Do not try to work out a redacted value from lengths, hashes, glossary hits or
 repeated writes. The mode keeps values out of results; it does not stop an agent
 that probes on purpose, so not probing is your part of it. Report keys and
 statuses instead. Without the mode, `valuesRedacted` is false and the values come
-back in full.
+back in full, except that text shaped like an API key is always replaced by
+`[REDACTED]` (see `history.keyRevisions` in [RESULTS.md](RESULTS.md)), so a
+returned value is not always the stored text.
 
 `verbatra mcp --redact-values` refuses to start, with exit `2` and
 `REDACTION_UNSUPPORTED`, when the installed `@verbatra/mcp` is too old to confirm
