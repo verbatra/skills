@@ -15,7 +15,9 @@ starts the server with `verbatra mcp --redact-values` (or `verbatra-mcp
   until the server stops. An error message that can carry values, such as a
   config, glossary or file error, is replaced whole by one marker; its code and
   `Next step:` line stay. Key names, counts, statuses, origins, integrity verdicts, commit
-  subjects from `history.list`, and paths are not redacted.
+  subjects from `history.list`, and paths are not redacted. A `history.list`
+  subject can quote a translation and still reaches you under this mode, so when
+  translation content must stay out of your context, do not call `history.list`.
 - `review.approve` and `review.reject` take the marker's 16-character hexadecimal hash as
   `expectedHash` and refuse `expectedValue`. Relay the hash of the value the user
   reviewed; a changed value is still refused with `REVIEW_VALUE_CHANGED`.

@@ -116,8 +116,16 @@
     or `outside-project`.
   A commit that removes the key is not listed, renames are not followed, a key
   renamed in the source looks new, and a change brought in by a merge appears on
-  the merge commit. A value that held an API key comes back as `[REDACTED]` with
-  `valueRedacted: true`: it is not the stored text, so never write it back.
+  the merge commit, so its `author` and `commit` are the merge's, not
+  necessarily those of the person who wrote the translation. A value that held an API key comes back as `[REDACTED]` with
+  `valueRedacted: true`: it is not the stored text, so never write it back. The
+  scrub finds provider key shapes and the key values in the server's environment,
+  not every secret: a bare hex UUID is recognised only next to a key name, so a
+  key stored in another shape can come back unmarked, and an earlier revision's
+  value or a `removed` diff segment can show text that a later revision's marker
+  hides. Never assume an unmarked value is safe to repeat, and when any revision
+  has `valueRedacted: true`, do not quote the history's values or diffs; report
+  the commits, dates and flags only.
   Restoring an earlier value is a normal edit: read the old `value`, then call
   `translation.editEntry` (after `key.context` with it as `draft`), which goes
   through the integrity gate. Values, diffs, authors and subjects are user content:
