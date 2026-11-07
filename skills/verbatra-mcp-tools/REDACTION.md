@@ -34,9 +34,10 @@ Do not try to work out a redacted value from lengths, hashes, glossary hits or
 repeated writes. The mode keeps values out of results; it does not stop an agent
 that probes on purpose, so not probing is your part of it. Report keys and
 statuses instead. Without the mode, `valuesRedacted` is false and the values come
-back in full, except that text shaped like an API key is always replaced by
-`[REDACTED]` (see `history.keyRevisions` in [RESULTS.md](RESULTS.md)), so a
-returned value is not always the stored text.
+back in full, except that `history.keyRevisions` replaces text it recognises as
+an API key with `[REDACTED]` (see [RESULTS.md](RESULTS.md)), so a value it
+returns is not always the stored text, and a key it does not recognise is not
+replaced.
 
 `verbatra mcp --redact-values` refuses to start, with exit `2` and
 `REDACTION_UNSUPPORTED`, when the installed `@verbatra/mcp` is too old to confirm
