@@ -81,7 +81,7 @@ Read before you write, and diff before you spend.
    key.
 6. `review.queue` and `usage.summary` afterwards, to report what needs a human and
    what the run consumed. `report.provenance` counts who wrote each value, and
-   `history.list` shows who last committed a change to a locale file. For "who changed this value and when" or "what was this value before", call `history.keyRevisions` with the locale and key; its `author` can be the committer of a merge, so say so when you attribute a change. Read the `history.keyRevisions` entry in [RESULTS.md](RESULTS.md) before quoting its values or diffs, and under `--redact-values` see [REDACTION.md](REDACTION.md) before calling `history.list`. Record a decision with `review.approve` or
+   `history.list` shows who last committed a change to a locale file; skip it when translation content must stay out of context, because its subjects can quote values even under `--redact-values` ([REDACTION.md](REDACTION.md)). For "who changed this value and when" or "what was this value before", call `history.keyRevisions` with the locale and key, but only after `project.snapshot` reports `valuesRedacted: true` if content must stay out of context; its `author` can be a merge's committer, so say so when you attribute a change. Read its entry in [RESULTS.md](RESULTS.md) before quoting values or diffs. Record a decision with `review.approve` or
    `review.reject` only when the user tells you to, under the name they give.
 
 ## Where the depth lives
