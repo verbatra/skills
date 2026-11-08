@@ -93,7 +93,7 @@
   found in one commit is replaced in every other commit of the same answer. A former
   custom key in an unrecognised shape can remain, so a subject is not safe to repeat
   because it is unmarked. `truncated: true` (absent otherwise) means more than 256
-  distinct keys, one key longer than 4096 characters, or keys adding up to more than
+  distinct keys, one key longer than 4096 UTF-16 code units, or keys adding up to more than
   65,536 UTF-16 code units turned up, and every non-empty subject and author is then
   `[REDACTED]`. Under `--redact-values` the authors are left out and the subjects
   stay (see [REDACTION.md](REDACTION.md)).
@@ -117,7 +117,7 @@
     `deadline`, `source-unreadable`, `records-unreadable` and `scrub-cap`. Raise
     `limit` (at most 200) for `commit-limit`, otherwise say the history is partial.
   - `scrub-cap` means more than 256 distinct keys, one key longer than 4096
-    characters, or keys adding up to more than 65,536 UTF-16 code units turned up.
+    UTF-16 code units, or keys adding up to more than 65,536 UTF-16 code units turned up.
     The answer fails closed: every non-empty value, diff segment, subject and author
     is `[REDACTED]` and `valueRedacted` is set on every revision. Empty text stays
     empty. Under `--redact-values` the values are markers of that scrubbed text and
