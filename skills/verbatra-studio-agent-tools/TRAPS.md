@@ -45,7 +45,7 @@
   the required translation and which forbidden renderings it contains, and for
   each term to keep untranslated whether the draft kept it. A clean `draftCheck`
   is not the integrity gate; `verbatra_translation_editEntry` still runs that.
-  Respect `maxLength` when it is present. When the glossary file cannot be read,
+  Respect `maxLength` when it is present; it is advisory and never blocks a translation, and a `limitsNotice` (`LIMITS_FILE_IGNORED`) means the config's budget alone applies. When the glossary file cannot be read,
   the glossary part is empty and `glossaryNotice` carries the error's `code` and
   `message`; the rest of the result is still answered, so do not read an empty
   glossary as "no terms apply" while a notice is present.
