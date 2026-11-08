@@ -13,7 +13,7 @@ Studio decides twice what an agent may do, and the two decisions are independent
    `verbatra_translation_translatePending`, are still skipped during registration
    unless Studio was also started with `--allow-spend` (or
    `VERBATRA_STUDIO_ALLOW_SPEND`) and the config names a translation provider.
-   The other eighteen register either way. `verbatra_project_snapshot` says which:
+   The other nineteen register either way. `verbatra_project_snapshot` says which:
    `capabilities.spend` is true only when both hold, and when it is false,
    `capabilities.spendWithheld` is `flag` (spend was not granted) or `policy` (the
    project is human-only, provider `none`, so no flag can grant it).
