@@ -45,7 +45,7 @@
   the required translation and which forbidden renderings it contains, and for
   each term to keep untranslated whether the draft kept it. A clean `draftCheck`
   is not the integrity gate; `verbatra_translation_editEntry` still runs that.
-  Respect `maxLength` when it is present; it is advisory and never blocks a translation, and a `limitsNotice` (`LIMITS_FILE_IGNORED`) means the file's limits were not applied and only the config's budget is. Tell the user, and ask for the budget or for the file to be fixed. Before the file is restored, replaced or deleted, ask the user to copy the existing file first, since it can hold uncommitted budgets. Do this before you write a value that may be too long. When the glossary file cannot be read,
+  Respect `maxLength` when it is present. Limits from `verbatra.limits.json` need Studio 0.7.0 (pending): no Studio tool reports its version, so on a Studio that may be older a missing `maxLength` does not mean no limit; ask the user for the version first. A limit is advisory and never blocks a translation, and a `limitsNotice` (`LIMITS_FILE_IGNORED`) means the file's limits were not applied and only the config's budget is. Tell the user, and ask for the budget or for the file to be fixed. Before the file is restored, replaced or deleted, ask the user to copy the existing file first, since it can hold uncommitted budgets. Do this before you write a value that may be too long. When the glossary file cannot be read,
   the glossary part is empty and `glossaryNotice` carries the error's `code` and
   `message`; the rest of the result is still answered, so do not read an empty
   glossary as "no terms apply" while a notice is present.
