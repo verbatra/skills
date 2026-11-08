@@ -55,8 +55,12 @@
   a `draft`. With a `limitsNotice` (`LIMITS_FILE_IGNORED`), or on a Studio that may be
   older (no tool reports its version, so ask the user), where a missing `maxLength`
   does not mean no limit and no notice appears, tell the user and get the budget
-  before writing. An unreadable file is a permissions fix; an invalid or non-regular
-  file is copy-first (ask the user to copy it, since it can hold uncommitted
+  before writing. `verbatra_translation_retranslateEntry` is never given that budget,
+  so then have the user fix the file, or write a checked value with
+  `verbatra_translation_editEntry`, which enforces no budget: keep the value within the
+  `maxLength` the context returns, or tell the user. An unreadable file is a
+  permissions fix, and if permissions are correct, another filesystem error; an
+  invalid or non-regular file is copy-first (ask the user to copy it, since it can hold uncommitted
   budgets), then fix. Limits are advisory and the config's wins per key.
 - `verbatra_translation_translatePending` reports each key the integrity gate
   refused under its locale's `integrityRefusals` (`key`, a `reason` of
