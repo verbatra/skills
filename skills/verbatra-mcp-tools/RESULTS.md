@@ -120,7 +120,8 @@
     characters, or keys adding up to more than 65,536 UTF-16 code units turned up.
     The answer fails closed: every non-empty value, diff segment, subject and author
     is `[REDACTED]` and `valueRedacted` is set on every revision. Empty text stays
-    empty.
+    empty. Under `--redact-values` the values are markers of that scrubbed text and
+    the diffs, subjects and authors are left out.
   - `unreadableRevisions` counts commits that could not be shown: a value over
     4096 characters is never returned in part, and a file that cannot be read,
     parsed or is above the size limit counts too.

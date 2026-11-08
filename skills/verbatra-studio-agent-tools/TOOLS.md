@@ -31,4 +31,5 @@ shapes are not always the same: the stdio server's `key.integrity` nests the
 verdicts in an `entries` list. `verbatra_history_keyRevisions` and the stdio
 `history.keyRevisions` run the same SDK call, so the same locale, key and limit
 give the same shape of answer on both; the stdio server's `--redact-values` mode, which this
-surface lacks, is the one difference. Do not carry a result shape from one surface to the other.
+surface lacks, is the main difference; the stdio server also scrubs its whole
+serialized result for keys, which this surface does not. Do not carry a result shape from one surface to the other.
