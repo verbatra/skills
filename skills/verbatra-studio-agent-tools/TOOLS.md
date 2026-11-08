@@ -23,7 +23,7 @@
 | `verbatra_locale_values` | `locale.values` | always | Source and target text of many keys at once, page by page: optional `locales`, and either exact `keys` or a case-insensitive `query` over key name, source and target. Optional `limit` and `cursor`. |
 | `verbatra_translation_editEntry` | `translation.editEntry` | always | Write a known translation for one key in one locale, recorded as written by an agent. No provider call. |
 | `verbatra_translation_estimate` | `translation.estimate` | always | Price what a pending run would send, per locale and in total. No provider call, no key read. |
-| `verbatra_translation_retranslateEntry` | `translation.retranslateEntry` | spend gated | Ask the provider for a fresh translation of one key in one locale; the result carries `limitsNotice` when `verbatra.limits.json` could not be used. |
+| `verbatra_translation_retranslateEntry` | `translation.retranslateEntry` | spend gated | Ask the provider for a fresh translation of one key in one locale; it writes and spends before its result returns `limitsNotice` (limits file unusable), so call `verbatra_key_context` first, even without a `draft`, and resolve any notice. |
 | `verbatra_translation_translatePending` | `translation.translatePending` | spend gated | Translate every missing or stale key in one run, optionally only some `locales` and under a `maxTokens` ceiling. |
 
 Every tool here has a stdio counterpart under its dotted method name, but the
