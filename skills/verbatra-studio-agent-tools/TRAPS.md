@@ -50,15 +50,20 @@
   `message`; the rest of the result is still answered, so do not read an empty
   glossary as "no terms apply" while a notice is present.
 - Limits rule. Length limits from `verbatra.limits.json` need Studio 0.7.0 (pending).
-  Before any write (`verbatra_translation_editEntry`,
-  `verbatra_translation_retranslateEntry`), call `verbatra_key_context`, even without
-  a `draft`. With a `limitsNotice` (`LIMITS_FILE_IGNORED`), or on a Studio that may be
+  Before any write tool, including the bulk `verbatra_translation_translatePending`,
+  check the limits. For one key (`verbatra_translation_editEntry`,
+  `verbatra_translation_retranslateEntry`) call `verbatra_key_context`, even without
+  a `draft`; for `verbatra_translation_translatePending` no tool shows the file, so
+  ask the user for the budget first and afterwards report any `LIMITS_FILE_IGNORED`
+  notice and `MAX_LENGTH_EXCEEDED` review reason. With a `limitsNotice` (`LIMITS_FILE_IGNORED`), or on a Studio that may be
   older (no tool reports its version, so ask the user), where a missing `maxLength`
   does not mean no limit and no notice appears, tell the user and get the budget
   before writing. `verbatra_translation_retranslateEntry` is never given that budget,
   so then have the user fix the file, or write a checked value with
   `verbatra_translation_editEntry`, which enforces no budget: keep the value within the
-  `maxLength` the context returns, or tell the user. An unreadable file is a
+  `maxLength` the context returns, or tell the user. A deleted, unusable or unsupported file means its budgets are not applied and
+  no notice remains: ask the user for the budget and write a checked value. An
+  unreadable file is a
   permissions fix, and if permissions are correct, another filesystem error; an
   invalid or non-regular file is copy-first (ask the user to copy it, since it can hold uncommitted
   budgets), then fix. Limits are advisory and the config's wins per key.
