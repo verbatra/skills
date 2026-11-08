@@ -10,7 +10,8 @@
 | `verbatra_glossary_get` | `glossary.get` | always | Read every term with its shared and per-locale translations, forbidden renderings, note and part of speech, what each target locale is held to (`byLocale`), and the terms kept untranslated. Takes no parameters. |
 | `verbatra_glossary_write` | `glossary.write` | always | Change one term: `translation`, per-`locale` translation and `forbidden`, `note`, `partOfSpeech`, `caseSensitive`, or `doNotTranslate`. `null` clears a field. Calls no provider. |
 | `verbatra_lock_state` | `lock.state` | always | Read the lock baseline and the per-locale counts it implies, plus who wrote each locale's current values (`provenance`). |
-| `verbatra_history_list` | `history.list` | always | Recent git commits touching the source or a target locale file, each with its hash, author name (never the email), author date, subject and touched paths. An unavailable result carries a `reason`. |
+| `verbatra_history_list` | `history.list` | always | Recent git commits touching the source or a target locale file, each with its hash, author name (never the email), author date, subject and touched paths. An unavailable result carries a `reason`. Subjects and author names are scrubbed for API keys, and `truncated` can be set (see [TRAPS.md](TRAPS.md)). |
+| `verbatra_history_keyRevisions` | `history.keyRevisions` | always | The git commits in which one key's value changed in one target locale, newest first: `commit`, `author` (the name, never the email), `authorDate`, `subject`, `value`, `origin`, `sourceChanged` and a word-level `diff` from the previous value. Takes `locale` and `key`; optional `limit`. `workingTree` is the uncommitted value on disk when it differs from HEAD. Read-only, no provider call. See [TRAPS.md](TRAPS.md). |
 | `verbatra_key_integrity` | `key.integrity` | always | Whether one key's value keeps the source placeholders and inline markup, stays valid ICU, and has ICU plural, ordinal and select arms that fit the target language, per locale. Optional `locales`. |
 | `verbatra_locale_integrity` | `locale.integrity` | always | Every translation that fails those same checks right now, per target locale, in one call. Judges every key present in both the source and the locale, whatever its sync state, and lists only the failing ones. Optional `locales`. |
 | `verbatra_review_queue` | `review.queue` | always | Every value a provider, the translation memory, a fuzzy match or an agent wrote that no person has approved, from the committed files, with its `provenance` and the last run's reason codes. Optional `includeApproved`. |
@@ -27,4 +28,8 @@
 
 Every tool here has a stdio counterpart under its dotted method name, but the
 shapes are not always the same: the stdio server's `key.integrity` nests the
-verdicts in an `entries` list. Do not carry a result shape from one surface to the other.
+verdicts in an `entries` list. `verbatra_history_keyRevisions` and the stdio
+`history.keyRevisions` run the same SDK call, so the same locale, key and limit
+give the same shape of answer on both; the stdio server's `--redact-values` mode, which this
+surface lacks, is the main difference; the stdio server also scrubs its whole
+serialized result for keys, which this surface does not. Do not carry a result shape from one surface to the other.

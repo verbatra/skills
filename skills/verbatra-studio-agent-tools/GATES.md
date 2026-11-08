@@ -13,7 +13,7 @@ Studio decides twice what an agent may do, and the two decisions are independent
    `verbatra_translation_translatePending`, are still skipped during registration
    unless Studio was also started with `--allow-spend` (or
    `VERBATRA_STUDIO_ALLOW_SPEND`) and the config names a translation provider.
-   The other eighteen register either way. `verbatra_project_snapshot` says which:
+   The other nineteen register either way. `verbatra_project_snapshot` says which:
    `capabilities.spend` is true only when both hold, and when it is false,
    `capabilities.spendWithheld` is `flag` (spend was not granted) or `policy` (the
    project is human-only, provider `none`, so no flag can grant it).
@@ -60,6 +60,8 @@ Registered is not unlimited either. Studio rate-limits the methods that write or
 spend, and `verbatra_project_snapshot` reports two of those limits as
 `capabilities.limits.retranslate` and `capabilities.limits.reviewDecision`, each
 `{ windowMs, max }`. The review one bounds decisions only a person makes, so the
-retranslate one is the limit you can run into. A call over its limit fails with
+retranslate one is the limit the snapshot lets you plan for. Other methods are
+limited without being reported, `verbatra_history_keyRevisions` among them (60 calls
+a minute by default). A call over its limit fails with
 `METHOD_RATE_LIMITED` and carries `error.retryAfterSeconds`: wait that long
 instead of retrying at once, and do not loop on it.
