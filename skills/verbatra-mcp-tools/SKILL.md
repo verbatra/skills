@@ -78,7 +78,7 @@ Read before you write, and diff before you spend.
 5. Only after an explicit yes, and only if the tool is present, call
    `translation.translatePending` for a whole-project run, passing `maxTokens`
    when the human agreed to a ceiling, or `translation.retranslateEntry` for one
-   key, after `key.context` has shown no `limitsNotice`.
+   key. Every write follows the limits rule in [TOOLS.md](TOOLS.md).
 6. `review.queue` and `usage.summary` afterwards, to report what needs a human and
    what the run consumed. `report.provenance` counts who wrote each value, and
    `history.list` shows who last committed a change to a locale file; skip it when translation content must stay out of context, because its subjects can quote values even under `--redact-values`, being scrubbed for API keys only ([REDACTION.md](REDACTION.md)). For "who changed this value and when" or "what was this value before", call `history.keyRevisions` with the locale and key, but only after `project.snapshot` reports `valuesRedacted: true` if content must stay out of context; its `author` can be a merge's committer, so say so when you attribute a change. Read its entry in [RESULTS.md](RESULTS.md) before quoting values or diffs. Record a decision with `review.approve` or
