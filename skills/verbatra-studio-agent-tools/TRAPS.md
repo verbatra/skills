@@ -63,7 +63,8 @@
   user and get the budget before writing. `verbatra_translation_retranslateEntry`
   cannot be given it, so have the user fix the file, or write a value checked
   against it with `verbatra_translation_editEntry`, which enforces no budget: keep
-  the value within the budget, or tell the user. An unreadable file is usually a
+  the value within the budget, or tell the user; on a Studio older than 0.7.0 fixing
+  the file does not help, so upgrade first or write the checked value. An unreadable file is usually a
   permissions fix, otherwise another filesystem error; an invalid or non-regular
   file is copy-first (ask the user to copy it, since it can hold uncommitted
   budgets), then fix. Limits are advisory and the config's wins per key.
