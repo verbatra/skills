@@ -49,6 +49,25 @@
   the glossary part is empty and `glossaryNotice` carries the error's `code` and
   `message`; the rest of the result is still answered, so do not read an empty
   glossary as "no terms apply" while a notice is present.
+- Limits rule. Length limits from `verbatra.limits.json` need Studio 0.7.0 (pending).
+  It applies to the tools that write a translation value:
+  `verbatra_translation_editEntry`, `verbatra_translation_retranslateEntry` and the bulk
+  `verbatra_translation_translatePending`. For one key call `verbatra_key_context`
+  first, even without a `draft`; before `verbatra_translation_translatePending` no
+  tool shows the file, so ask the user for the budget, and afterwards report any
+  `LIMITS_FILE_IGNORED` notice and `MAX_LENGTH_EXCEEDED` review reason. A
+  `limitsNotice` means the file is invalid, unreadable, unsupported or not a regular
+  file, and its budgets are not applied. A deleted file, or a Studio older than 0.7.0
+  (no tool reports its version, so ask the user), gives no notice and no file
+  budgets, so a missing `maxLength` does not mean no limit. In each case tell the
+  user and get the budget before writing. `verbatra_translation_retranslateEntry`
+  cannot be given it, so have the user fix the file, or write a value checked
+  against it with `verbatra_translation_editEntry`, which enforces no budget: keep
+  the value within the budget, or tell the user; on a Studio older than 0.7.0 fixing
+  the file does not help, so upgrade first or write the checked value. An unreadable file is usually a
+  permissions fix, otherwise another filesystem error; an invalid or non-regular
+  file is copy-first (ask the user to copy it, since it can hold uncommitted
+  budgets), then fix. Limits are advisory and the config's wins per key.
 - `verbatra_translation_translatePending` reports each key the integrity gate
   refused under its locale's `integrityRefusals` (`key`, a `reason` of
   `placeholder`, `markup`, `icu`, `degenerate` or `empty`, and `details` when one

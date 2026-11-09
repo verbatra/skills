@@ -29,6 +29,8 @@ exits `1`.
 | `NETWORK_POLICY_VIOLATION` | The network policy refuses the provider's host. Report it; do not loosen the policy yourself. |
 | `LOCALE_UNSUPPORTED_BY_PROVIDER` | DeepL or Google Cloud Translation does not list a configured locale, so the whole run was refused before anything started or was spent. Run `doctor --locales`, then drop the locale with `--locales` or ask the human. |
 | `GLOSSARY_NOT_FILE_BACKED`, `GLOSSARY_UNWRITABLE` | The glossary is inline or absent, or its file or lock could not be written. |
+| `LENGTH_LIMIT_INVALID` | A length limit was refused. Next step: "Pass a whole number from 1 to 9007199254740991 (or null to remove) and a key of 1 to 1024 characters. A number is refused for a key the config's `maxLength` sets, and a file at its 10,000 limits or 1 MiB needs some removed first." |
+| `LIMITS_FILE_UNUSABLE`, `LIMITS_FILE_UNWRITABLE` | `verbatra.limits.json`, beside the lock file, cannot be used or cannot be read or written. Next steps: "Restore verbatra.limits.json from version control, or replace it with a regular file or delete it, then try again." and "Check the permissions of verbatra.limits.json, its directory and .verbatra-local so they can be read and written, then try again." An unreadable file is usually a permissions problem (any open error but not-found): fix the permissions, or the filesystem error if they are correct, and never delete it. Before restoring, replacing or deleting an invalid or non-regular file, copy the existing file first, even when it is in version control: it can hold uncommitted limits nowhere else. Limits are advisory and never block a translation; the config's `maxLength` wins per key. |
 | `CONCURRENCY_INVALID`, `CONCURRENCY_BUDGET_CONFLICT`, `MAX_TOKENS_INVALID` | Bad `--concurrency` or `--max-tokens`, or a concurrency above `1` together with a token budget. |
 | `LOCALE_LAYOUT_INVALID`, `LOCALE_PATH_COLLISION` | `files.pattern` and `files.localeStyle` do not fit, a `gettext-po` locale has a script with no gettext modifier, or two locales map to one file. |
 | `TARGET_UNWRITABLE`, `TYPES_UNWRITABLE`, `TMX_UNWRITABLE`, `EXPORT_UNWRITABLE`, `MEMORY_UNWRITABLE` | The file the command writes could not be written; `MEMORY_UNWRITABLE` is `verbatra.cache.json` during `tmx import`. |
@@ -49,7 +51,7 @@ A run that completed can still carry notices, each in
 `SUB_BATCH_FAILED`, `BLANK_ROW_BASELINE_RETAINED`, `HANDOFF_REVIEWS_RECORDED`,
 `BUDGET_TOKENS_EXCEEDED`,
 `CACHE_VERSION_UNRECOGNIZED`, `PROVENANCE_VERSION_UNRECOGNIZED`,
-`PROVENANCE_FILE_TOO_LARGE`, `LOCALE_STATE_CARRIED_OVER`,
+`PROVENANCE_FILE_TOO_LARGE`, `LIMITS_FILE_IGNORED` (the limits file could not be used: fix permissions or the filesystem error if it is unreadable, otherwise copy the existing file before restoring, replacing or deleting it), `LOCALE_STATE_CARRIED_OVER`,
 `LOCALE_STATE_CARRY_OVER_SKIPPED`, and the locale support warnings
 `LOCALE_UNVERIFIED_BY_PROVIDER`, `LOCALE_NOT_WELL_TESTED`,
 `GLOSSARY_UNSUPPORTED_BY_PROVIDER` and `FORMALITY_UNSUPPORTED_BY_PROVIDER`,
