@@ -26,6 +26,7 @@ does not have, and lacks two the stdio server has, `project.doctor`
 and `report.provenance`. A tool with the same method name can still answer in a
 different shape on each surface, and only the stdio server has a values-redacted
 mode.
+`verbatra_usage_history` needs `@verbatra/studio` 0.7.0 or newer; if it is absent, upgrade Studio.
 `verbatra-mcp-tools` covers the stdio server. `verbatra-cli` covers
 the binary. Do not assume a tool exists on one surface because you saw it on the
 other.
