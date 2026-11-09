@@ -15,7 +15,7 @@ command is involved, so nothing here needs a terminal.
 
 This is one of two agent surfaces and they are not the same set. The Studio
 dashboard exposes the same tools as browser tools with underscored names, except
-`project.doctor` and `report.provenance`, which exist only here;
+`project.doctor`, `report.provenance` and `usage.history`, which exist only here;
 `verbatra-studio-agent-tools` covers those. If the tool names you hold start with
 `verbatra_`, you are on the Studio surface, not this one. For driving the binary
 from a shell instead, see `verbatra-cli`.
