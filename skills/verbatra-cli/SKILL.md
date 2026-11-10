@@ -87,7 +87,7 @@ non-zero exit is the answer you asked for, not a crash.
 Commit `verbatra.config.ts`, `.env.example`, `verbatra.lock.json`,
 `verbatra.provenance.json` and the translated locale files. Never commit `.env`,
 `.env.local`, `.verbatra-local/` or `verbatra.cache.json`. Requires Node
-`^22.18.0 || >=24`.
+`^22.22.0 || >=24`.
 
 ## Where the depth lives
 

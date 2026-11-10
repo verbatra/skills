@@ -10,7 +10,7 @@
     "url": "git+https://github.com/verbatra/skills.git"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "node": "^22.22.0 || >=24"
   },
   "scripts": {
     "validate": "node scripts/validate-skills.mjs",
