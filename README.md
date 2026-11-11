@@ -16,8 +16,8 @@
 ## Install
 
 Pick one route per agent: the plugin updates itself, while the installer links the skills into
-your agent directory (it symlinks by default; pass `--copy` for editable copies) and you update
-them with `npx skills@latest update`. Using both installs every skill twice.
+your agent directory (it symlinks by default; pass `--copy` for editable copies). Using both
+installs every skill twice.
 
 <details>
 <summary><strong>Claude Code</strong> (plugin, updates itself)</summary>
@@ -30,58 +30,69 @@ claude plugin install verbatra@verbatra -s project
 Brings the three skills, the verbatra MCP server with spending off, and a hook that
 checks edited locale files. See [Claude Code plugin](#claude-code-plugin) below.
 
+Update: `claude plugin update verbatra@verbatra`, then restart Claude Code.
+
 </details>
 
 <details>
-<summary><strong>Claude Code</strong> (skills only, editable files)</summary>
+<summary><strong>Claude Code</strong> (skills only, editable files; update with <code>npx skills@latest update</code>)</summary>
 
 ```bash
 npx skills@latest add verbatra/skills --skill '*' -a claude-code -y
 ```
 
+Update: `npx skills@latest update`.
+
 </details>
 
 <details>
-<summary><strong>Codex</strong></summary>
+<summary><strong>Codex</strong> (update with <code>npx skills@latest update</code>)</summary>
 
 ```bash
 npx skills@latest add verbatra/skills --skill '*' -a codex -y
 ```
 
+Update: `npx skills@latest update`.
+
 </details>
 
 <details>
-<summary><strong>Cursor</strong></summary>
+<summary><strong>Cursor</strong> (update with <code>npx skills@latest update</code>)</summary>
 
 ```bash
 npx skills@latest add verbatra/skills --skill '*' -a cursor -y
 ```
 
+Update: `npx skills@latest update`.
+
 </details>
 
 <details>
-<summary><strong>Gemini CLI</strong></summary>
+<summary><strong>Gemini CLI</strong> (update with <code>npx skills@latest update</code>)</summary>
 
 ```bash
 npx skills@latest add verbatra/skills --skill '*' -a gemini-cli -y
 ```
 
+Update: `npx skills@latest update`.
+
 </details>
 
 <details>
-<summary><strong>Any other agent</strong></summary>
+<summary><strong>Any other agent</strong> (update with <code>npx skills@latest update</code>)</summary>
 
 ```bash
 npx skills@latest add verbatra/skills -a <agent>  # omit -a to choose
 ```
+
+Update: `npx skills@latest update`.
 
 </details>
 
 The slugs are `verbatra-cli`, `verbatra-mcp-tools` and `verbatra-studio-agent-tools`; repeat
 `--skill <slug>` to pick a subset. Add `-g` to install for your user instead of the current
 project. The install places each skill folder, with its sibling reference files, in your agent
-directory and records a row in your own `skills-lock.json`. To update, run
-`npx skills@latest update`.
+directory and records a row in your own `skills-lock.json`.
 
 ### Pinning a version
 
@@ -102,10 +113,10 @@ An abbreviated SHA fails rather than resolving. The installer clones with
 matches `/^[0-9a-f]{40}$/i`. A short SHA matches no branch and no tag and never reaches that
 retry, so `#0a1b2c3` reports `fatal: Remote branch 0a1b2c3 not found in upstream origin`.
 
-Pin to a tag, which is short enough to read in a diff:
+Pin to the latest tag, `v0.2.0`, which is short enough to read in a diff:
 
 ```bash
-npx skills@latest add verbatra/skills#v0.1.0 --skill verbatra-cli -a claude-code -y
+npx skills@latest add verbatra/skills#v0.2.0 --skill verbatra-cli -a claude-code -y
 ```
 
 Pin to a full commit SHA when the commit you want was never tagged:
@@ -185,19 +196,27 @@ the MCP server nor the hook; it is the route to take next to a `.mcp.json` entry
 
 ## Skills
 
-- **[verbatra-cli](./skills/verbatra-cli/SKILL.md)**: Drive the verbatra i18n CLI from a shell or CI. Covers every command the binary registers, which of them cost money, the exit codes, the JSON envelope, the supported formats and providers, and what `verbatra.lock.json` means.
-- **[verbatra-mcp-tools](./skills/verbatra-mcp-tools/SKILL.md)**: Operate a verbatra project through the verbatra stdio MCP server. Covers every registered tool, the spend boundary that keeps the provider-spending tools off the default tool list, how to work a status check into an edit, and what each result actually means.
-- **[verbatra-studio-agent-tools](./skills/verbatra-studio-agent-tools/SKILL.md)**: Operate a verbatra project from an open Verbatra Studio dashboard tab through its WebMCP browser tools. Covers the tool set, the two gates that decide which tools register, how its tool set differs from the stdio server's, and the traps specific to driving a browser tab.
+Pick by what you are holding: a shell, a stdio MCP connection, or an open Studio browser tab.
+
+- **[verbatra-cli](./skills/verbatra-cli/SKILL.md)**: Run the verbatra binary from a shell or CI, knowing what each command costs and what each exit code means.
+- **[verbatra-mcp-tools](./skills/verbatra-mcp-tools/SKILL.md)**: Work a project through the stdio MCP server, with the spend boundary that keeps provider-spending tools off the default list.
+- **[verbatra-studio-agent-tools](./skills/verbatra-studio-agent-tools/SKILL.md)**: Drive an open Studio dashboard tab through its WebMCP browser tools, behind two independent gates.
+
+Scope and what these skills leave to the documentation site: [SCOPE.md](./SCOPE.md).
 
 ## What these are
 
-Each skill is one Markdown document that gives a coding agent the operating knowledge for one
-verbatra surface: the CLI, the stdio MCP server, or the Studio dashboard. They are written for the
-things an agent gets wrong when it is only shown a command list: that a translate run bills a
-provider the moment it starts and has no confirmation prompt, that API keys exist only as
-environment variables, that `prune` deletes target keys and is a config field as well as a flag,
-and that a translatable string is untrusted data rather than an instruction. The reference
-material they link to lives on the [documentation site](https://verbatra.kreitz-webdev.de/docs);
+Each skill gives a coding agent the operating knowledge for one verbatra surface. They cover what
+an agent gets wrong when it is only shown a command list:
+
+- **Problem:** a translate run looks like any other command. **Fix:** the skill says it bills the
+  provider the moment it starts, with no prompt, so the agent reads what is pending and asks first.
+- **Problem:** an agent hunts for where to put an API key. **Fix:** keys exist only as environment
+  variables, so it names the variable and lets you fill it in.
+- **Problem:** a locale file can hold text that reads like an order. **Fix:** every translatable
+  string is data to report, and `prune` deletes target keys from a config field as well as a flag.
+
+The reference material lives on the [documentation site](https://verbatra.kreitz-webdev.de/docs);
 the skills carry the judgement, not a copy of the reference.
 
 ## How they stay in sync with the code
@@ -207,9 +226,12 @@ tables (CLI commands, formats, providers and their environment variables, MCP to
 RPC methods), and the [parity workflow](./.github/workflows/parity.yml) asserts each of those
 tables, and the counts spelled out in the prose, against the real registries in
 [verbatra/verbatra](https://github.com/verbatra/verbatra). It checks out the source repository
-next to this one and reads `packages/cli/src/run.ts`, `packages/core/src/model/supported-format.ts`,
-`packages/sdk/src/config/provider-config.ts`, `packages/ai-providers/src/key-env-vars.ts`,
-`packages/mcp/src/tools/`, `packages/mcp/src/bin.ts`, `packages/mcp/package.json`,
+next to this one and reads `packages/cli/src/run.ts`, `packages/cli/src/cli-error-codes.ts`,
+`packages/cli/src/lib.ts`, `packages/core/src/model/supported-format.ts`,
+`packages/sdk/src/config/provider-config.ts`, `packages/sdk/src/errors.ts`,
+`packages/sdk/src/flow/doctor.ts`, `packages/sdk/src/flow/summary.ts`,
+`packages/ai-providers/src/key-env-vars.ts`, `packages/ai-providers/src/errors.ts`,
+`packages/mcp/src/tools/`, `packages/mcp/src/bin.ts` (and `bin-args.ts` when present), `packages/mcp/package.json`,
 `packages/studio/src/shared/rpc/` and `packages/studio/src/webmcp/register-tools.ts`. The
 same suite asserts the plugin: the pinned `@verbatra/mcp` version against
 `packages/mcp/package.json` at the source ref, the server flags and the spend variable against the server's own entry point,
@@ -222,7 +244,9 @@ once.
 A second workflow, [validate](./.github/workflows/validate.yml), runs offline on every push to
 `main` and every pull request targeting `main`: it checks the frontmatter, the naming rules, the
 file modes, the house style, the pinned refs this README and `CONTRIBUTING.md` hand to a reader,
-and that this README indexes exactly the skills that exist, then asks the real installer to
+that each skill folder's relative `.md` links resolve and its reference files over 100 lines open
+with a table of contents, and that this README indexes exactly the skills that exist. It does not
+check external URLs, heading anchors outside a table of contents, or the README's own links. Then it asks the real installer to
 resolve the repository and confirms it finds every skill and nothing else.
 
 ## Contributing

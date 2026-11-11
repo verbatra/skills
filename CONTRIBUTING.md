@@ -15,7 +15,7 @@ Requirements: Node.js `^22.22.0 || >=24` and `npm ci` once.
    ```yaml
    ---
    name: verbatra-example
-   description: One sentence on what the skill does, then the trigger conditions ("Use when ..."), then what it covers.
+   description: <What it does>. Use when <triggers>. Also use when <secondary triggers>.
    license: MIT
    metadata:
      source: 'https://github.com/verbatra/skills'
@@ -28,9 +28,10 @@ Requirements: Node.js `^22.22.0 || >=24` and `npm ci` once.
    not just a label; it is capped at 500 characters by the validator
    (1024 is the installer's hard limit). `metadata.source` always points at this repository.
 
-   **A description triggers loading; it does not index the surface.** Write the one-line summary,
-   the "Use when ..." trigger conditions, and a closing clause naming what the skill covers in
-   the abstract ("every command the verbatra binary registers"). Do not list the commands, tool
+   **A description triggers loading; it does not index the surface.** Write one sentence on what
+   the skill does, a "Use when ..." sentence with the trigger conditions, and, only when they
+   exist, an "Also use when ..." sentence for the secondary ones (a missing tool, a refused
+   action). Aim for about 300 characters. Do not list the commands, tool
    names or RPC methods: the body table already lists every one of them, the parity suite already
    asserts that table against the registry, and a second hand-kept copy in the frontmatter can
    only drift out of it. `scripts/verify-tool-parity.test.mjs` enforces this, allowing a
@@ -62,6 +63,7 @@ compares them to the tables and the spelled-out counts in the three skill docume
 | `## Providers` second column in `verbatra-cli` | `PROVIDER_ENV` and `OPENAI_COMPATIBLE_ENV_VAR` in `packages/ai-providers/src/key-env-vars.ts`; `none` names no variable |
 | `## doctor` table in `verbatra-cli` | `"config"` then `CONFIG_DEPENDENT_IDS` in `packages/sdk/src/flow/doctor.ts`, in order; every other `DoctorCheckId` is a row of the `### Checks that replace the setup run` table under it |
 | `## Error and notice codes` table in `verbatra-cli` | every `SdkErrorCode` in `packages/sdk/src/errors.ts`, once each; any other code must be in `CLI_ERROR_CODES` in `packages/cli/src/cli-error-codes.ts`, which that table and the `init` failure table under `## Setting a project up` cover between them |
+| `## Provider error codes` table in `verbatra-cli` | every member of `ProviderErrorCode` in `packages/ai-providers/src/errors.ts`, with its runtime `PROVIDER_ERROR_CODES` list |
 | Notice code list under `## Error and notice codes` in `verbatra-cli` | `SdkNoticeCode` in `packages/sdk/src/flow/summary.ts` |
 | `## Tools` table in `verbatra-mcp-tools` | `ALL_TOOLS_IN_ORDER` and `SPEND_TOOL_NAMES` in `packages/mcp/src/tools/registry.ts`, cross-checked against every `name:` declared under `packages/mcp/src/tools/` |
 | `## Tools` table in `verbatra-studio-agent-tools` | `rpcParamsSchemas` in `packages/studio/src/shared/rpc/contract.ts` less `HUMAN_ONLY_METHOD_NAMES`, the `*_METHOD` constants beside it, and the `TOOL_DESCRIPTORS` (with their `spendGated` flag) in `packages/studio/src/webmcp/register-tools.ts`; every `HUMAN_ONLY_METHOD_NAMES` method is named under `## Two gates, not one` |
@@ -91,7 +93,8 @@ npm ci
 The offline checks, which are what `validate.yml` runs:
 
 ```bash
-npm run validate   # frontmatter, naming, file modes, house style, pinned refs, README index
+npm run validate   # frontmatter, naming, file modes, house style, pinned refs, README index,
+                   # relative .md links in each skill folder, tables of contents over 100 lines
 npm test           # the validator's own fixture suite, one fixture per rule
 ```
 
@@ -176,7 +179,7 @@ the `#` fragment.
 Two forms freeze, and one form that looks like it should does not:
 
 - A **tag** freezes. It is the form to hand a reader, because it is short enough to survive a
-  diff review: `verbatra/skills#v0.1.0`.
+  diff review: `verbatra/skills#v0.2.0`.
 - A **full 40-character commit SHA** freezes, and is the form for a commit that was never tagged.
 - An **abbreviated SHA fails outright**. The installer clones with
   `git clone --depth 1 --branch <ref>` and retries as a bare commit only when the ref matches
@@ -203,7 +206,7 @@ after that verbatra release is out:
    before the branch reaches `main`.
 4. Merge to `main`, then re-vendor the three skills in `verbatra/verbatra`.
 
-Cutting a tag is the whole release: `git tag v0.2.0 <commit> && git push origin v0.2.0`. If a
+Cutting a tag is the whole release: `git tag v0.3.0 <commit> && git push origin v0.3.0`. If a
 versioned changelog is ever wanted on top of that, the way to add it is changesets with a private
 root `package.json`: `npx changeset` per change, a version pull request, and `npx changeset tag` to
 cut the same git tag. Nothing in the current layout blocks that; it is deliberately not set up,
