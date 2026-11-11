@@ -1,6 +1,6 @@
 ---
 name: verbatra-studio-agent-tools
-description: Operate a verbatra i18n project from an open Verbatra Studio dashboard tab through its WebMCP browser tools. Use when a browser agent drives the Studio tab and translation status must be read, a key is missing or stale, translation values must be scanned in bulk, who last changed a locale file or one value must be found, or a translation corrected in place. Also use when the Studio tools are absent from the tab or a provider-spending tool is missing.
+description: Operate a verbatra i18n project from an open Verbatra Studio tab through its WebMCP browser tools. Use when a browser agent drives the tab and status must be read, values scanned, a value's history found, or a translation corrected in place. Also use when the Studio tools or a spending tool are missing.
 license: MIT
 metadata:
   source: 'https://github.com/verbatra/skills'
@@ -93,7 +93,9 @@ See [GATES.md](GATES.md).
 5. If you already know the correct text, `verbatra_translation_editEntry`. It
    spends nothing, and it never obtains a translation: exactly the text you send is
    what gets written. It goes through the placeholder and ICU integrity gate first,
-   so a rejected value is returned with a reason and nothing is written.
+   so a rejected value is returned with a reason and nothing is written. It does
+   replace a person's value without protection, so read `provenance` in the
+   `verbatra_key_context` result and ask first when a person wrote it.
 6. Before asking, `verbatra_translation_estimate` with the same `locales` you
    intend to translate, and show its figure next to the diff.
 7. Only after an explicit yes, and only if the tool is registered, use the two
