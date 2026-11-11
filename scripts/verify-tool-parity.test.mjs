@@ -281,6 +281,34 @@ function providerErrorCodeList() {
   ).sort();
 }
 
+function hintEntries(block) {
+  return [
+    ...block.matchAll(/^\s*([A-Z_]+):\s*(?:"((?:[^"\\]|\\.)*)"|SDK_ERROR_HINTS\.([A-Z_]+))/gm),
+  ].map((match) => ({ code: match[1], text: match[2], reference: match[3] }));
+}
+
+function providerErrorHints() {
+  const source = readSourceFile("packages/sdk/src/error-hints.ts");
+  const sdk = new Map(
+    hintEntries(sourceBlock(source, "const SDK_ERROR_HINTS = {", "\n} as const", "SDK_ERROR_HINTS")).map(
+      (entry) => [entry.code, entry.text],
+    ),
+  );
+  return new Map(
+    hintEntries(
+      sourceBlock(source, "const PROVIDER_ERROR_HINTS = {", "\n} as const", "PROVIDER_ERROR_HINTS"),
+    ).map((entry) => [entry.code, entry.text ?? sdk.get(entry.reference)]),
+  );
+}
+
+function skillProviderErrorHints() {
+  return new Map(
+    tableRowsUnder(readSkillFile(CLI_ERRORS_DOC), "## Provider error codes", CLI_ERRORS_DOC).map(
+      (cells) => [backticked(cells[0]), cells[1]],
+    ),
+  );
+}
+
 function skillProviderErrorCodes() {
   return tableRowsUnder(readSkillFile(CLI_ERRORS_DOC), "## Provider error codes", CLI_ERRORS_DOC)
     .flatMap((cells) => allBackticked(cells[0]))
@@ -713,6 +741,14 @@ describe("the cli skill enumerates the real doctor checks and sdk codes", () => 
 
   it("lists exactly the ProviderErrorCode union under Provider error codes", () => {
     expect(skillProviderErrorCodes()).toEqual(providerErrorCodes());
+  });
+
+  it("quotes the next step verbatim from the error hints", () => {
+    const hints = providerErrorHints();
+    expect([...hints.keys()].sort()).toEqual(providerErrorCodes());
+    for (const [code, text] of skillProviderErrorHints()) {
+      expect(text, `${code} hint`).toBe(hints.get(code));
+    }
   });
 
   it("keeps the provider error code union and its runtime list in step", () => {

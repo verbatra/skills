@@ -15,9 +15,9 @@
 
 ## Install
 
-Pick one route per agent: the plugin and the installer each have their own update command, and the installer links the skills into
-your agent directory (it symlinks by default; pass `--copy` for editable copies). Using both
-installs every skill twice.
+Pick one route per agent: the plugin and the installer have separate update commands. The
+installer links the skills into your agent directory (it symlinks by default; pass `--copy` for
+editable copies). Using both installs every skill twice.
 
 <details>
 <summary><strong>Claude Code</strong> (plugin; update with <code>claude plugin update verbatra@verbatra -s project</code>)</summary>
