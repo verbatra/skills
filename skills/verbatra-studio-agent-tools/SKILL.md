@@ -26,7 +26,7 @@ does not have, and lacks two the stdio server has, `project.doctor`
 and `report.provenance`. A tool with the same method name can still answer in a
 different shape on each surface, and only the stdio server has a values-redacted
 mode.
-Studio 0.6.0 has twenty tools: `verbatra_history_keyRevisions` and `verbatra_usage_history` came in 0.7.0. If the other tools are listed but those are not, Studio may be older than 0.7.0, or the tab is a stale page; reload it, then ask the operator for the installed `@verbatra/studio` version before suggesting an upgrade.
+Studio 0.6.0 registers twenty tools and advertises eighteen without spend: `verbatra_history_keyRevisions` and `verbatra_usage_history` came in 0.7.0. If the other tools are listed but those are not, Studio may be older than 0.7.0, or the tab is a stale page; reload it, then ask the operator for the installed `@verbatra/studio` version before suggesting an upgrade.
 `verbatra-mcp-tools` covers the stdio server. `verbatra-cli` covers
 the binary. Do not assume a tool exists on one surface because you saw it on the
 other.
