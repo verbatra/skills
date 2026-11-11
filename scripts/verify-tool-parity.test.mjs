@@ -262,6 +262,31 @@ function doctorStandardRunIds() {
   return ["config", ...[...dependent.matchAll(/"([^"]+)"/g)].map((match) => match[1])];
 }
 
+function providerErrorCodes() {
+  return unionMembers(
+    "packages/ai-providers/src/errors.ts",
+    "export type ProviderErrorCode =",
+    "ProviderErrorCode",
+  ).sort();
+}
+
+function providerErrorCodeList() {
+  return quotedCodes(
+    sourceBlock(
+      readSourceFile("packages/ai-providers/src/errors.ts"),
+      "export const PROVIDER_ERROR_CODES = [",
+      "] as const",
+      "PROVIDER_ERROR_CODES",
+    ),
+  ).sort();
+}
+
+function skillProviderErrorCodes() {
+  return tableRowsUnder(readSkillFile(CLI_ERRORS_DOC), "## Provider error codes", CLI_ERRORS_DOC)
+    .flatMap((cells) => allBackticked(cells[0]))
+    .sort();
+}
+
 function cliErrorCodes() {
   return quotedCodes(
     sourceBlock(
@@ -684,6 +709,14 @@ describe("the cli skill enumerates the real doctor checks and sdk codes", () => 
     expect(readSourceFile("packages/cli/src/lib.ts")).toMatch(
       /export \{[^}]*\bCLI_ERROR_CODES\b[^}]*\} from "\.\/cli-error-codes\.js";/,
     );
+  });
+
+  it("lists exactly the ProviderErrorCode union under Provider error codes", () => {
+    expect(skillProviderErrorCodes()).toEqual(providerErrorCodes());
+  });
+
+  it("keeps the provider error code union and its runtime list in step", () => {
+    expect(providerErrorCodeList()).toEqual(providerErrorCodes());
   });
 
   it("lists exactly the SdkNoticeCode union as run notices", () => {
