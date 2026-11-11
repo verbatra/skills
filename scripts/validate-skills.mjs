@@ -181,7 +181,7 @@ function checkSkill(root, name, declaredBy, fail) {
 function headingSlug(heading) {
   return heading
     .toLowerCase()
-    .replaceAll(/[^a-z0-9 _-]/g, "")
+    .replaceAll(/[^\p{L}\p{N} _-]/gu, "")
     .replaceAll(" ", "-");
 }
 
@@ -189,7 +189,7 @@ function proseLines(content) {
   const lines = [];
   let fenced = false;
   content.split("\n").forEach((line, index) => {
-    if (line.startsWith("```")) {
+    if (/^\s*(```|~~~)/.test(line)) {
       fenced = !fenced;
       return;
     }
@@ -228,12 +228,19 @@ function checkTableOfContents(relativePath, content, fail) {
     );
     return;
   }
-  const slugs = new Set(
-    prose.flatMap(({ line }) => {
-      const match = /^#{2,3} (.+)$/.exec(line);
-      return match === null ? [] : [headingSlug(match[1])];
-    }),
-  );
+  const slugs = new Set();
+  for (const { line } of prose) {
+    const match = /^#{1,6} (.+)$/.exec(line);
+    if (match === null) {
+      continue;
+    }
+    const base = headingSlug(match[1]);
+    let slug = base;
+    for (let suffix = 1; slugs.has(slug); suffix += 1) {
+      slug = `${base}-${suffix}`;
+    }
+    slugs.add(slug);
+  }
   for (const anchor of anchors) {
     if (!slugs.has(anchor)) {
       fail(`${relativePath}: table of contents links #${anchor}, which matches no heading`);

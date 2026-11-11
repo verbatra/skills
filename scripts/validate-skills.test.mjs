@@ -355,6 +355,57 @@ describe("every rule fires with a precise message", () => {
     });
     expect(validateSkills(root)).toEqual([]);
   });
+
+  const filler = Array.from({ length: 100 }, (_, index) => `line ${index}`).join("\n");
+
+  it("rule 20: a document of 100 lines or fewer needs no table of contents", () => {
+    const body = Array.from({ length: 95 }, (_, index) => `line ${index}`).join("\n");
+    const root = validFixture({
+      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n## One\n\n${body}\n`,
+    });
+    expect(validateSkills(root)).toEqual([]);
+  });
+
+  it("rule 20: SKILL.md is exempt from the table of contents rule", () => {
+    const root = validFixture({
+      "skills/verbatra-cli/SKILL.md": skillFile("verbatra-cli", {
+        body: `# heading\n\n## One\n\n${filler}\n`,
+      }),
+    });
+    expect(validateSkills(root)).toEqual([]);
+  });
+
+  it("rule 20: a table of contents placed after the first ## heading is rejected", () => {
+    const root = validFixture({
+      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n## One\n\n- [One](#one)\n- [Two](#two)\n\n## Two\n\n${filler}\n`,
+    });
+    expect(
+      validateSkills(root).some((failure) => failure.includes("needs a table of contents")),
+    ).toBe(true);
+  });
+
+  it("rule 20: duplicate headings take GitHub's -1 suffix", () => {
+    const toc = "- [Same](#same)\n- [Same](#same-1)\n";
+    const root = validFixture({
+      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n${toc}\n## Same\n\n## Same\n\n${filler}\n`,
+    });
+    expect(validateSkills(root)).toEqual([]);
+  });
+
+  it("rule 20: a heading with unicode letters keeps them in its anchor", () => {
+    const toc = "- [Zur\u00fcck](#zur\u00fcck)\n- [Two](#two)\n";
+    const root = validFixture({
+      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n${toc}\n## Zur\u00fcck\n\n## Two\n\n${filler}\n`,
+    });
+    expect(validateSkills(root)).toEqual([]);
+  });
+
+  it("rule 19: a link inside an indented fenced block is not checked", () => {
+    const root = validFixture({
+      "skills/verbatra-cli/COMMANDS.md": "# Commands\n\n   ```md\n   [x](MISSING.md)\n   ```\n",
+    });
+    expect(validateSkills(root)).toEqual([]);
+  });
 });
 
 describe("the command-line entry point", () => {
