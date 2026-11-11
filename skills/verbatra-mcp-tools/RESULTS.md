@@ -89,7 +89,7 @@
   `timeout`, `output-too-large`, `unsafe-config` or `git-too-old`. Renames
   are not followed. Commit subjects and author names are user content like any
   other text. They are scrubbed for API keys before they are cut to length: a
-  recognised key shape or a configured key value becomes `[REDACTED]`, and a key
+  recognised key shape or a configured key value of 8 or more characters becomes `[REDACTED]`, and a key
   found in one commit is replaced in every other commit of the same answer. A former
   custom key in an unrecognised shape can remain, so a subject is not safe to repeat
   because it is unmarked. `truncated: true` (absent otherwise) means more than 256
@@ -97,14 +97,15 @@
   65,536 UTF-16 code units turned up, and every non-empty subject and author is then
   `[REDACTED]`. Under `--redact-values` the authors are left out and the subjects
   stay (see [REDACTION.md](REDACTION.md)).
-- `history.keyRevisions` answers "who changed this value and when" and "what was
+- `history.keyRevisions` (needs `@verbatra/mcp` 0.4.0 or newer; absent from the tool list on 0.3.0) answers "who changed this value and when" and "what was
   this value before" for one key in one target locale. Git is the store: it runs
   `git log` and `git cat-file`, calls no provider and writes nothing, so use it
   freely. Each revision carries `commit`, `authorDate`, `author`, `subject`, the
   `value` at that commit, `origin` (the write path recorded in
   `verbatra.provenance.json` in that commit, absent when that file could not be
-  read), `sourceChanged` (`true`, `false` or `"unknown"`: whether the key's source
-  text differs from the one the lock file recorded in that commit) and `diff`,
+  read), `sourceChanged` (`true`, `false` or `"unknown"`: whether the content hash of the key's
+  current source entry, covering its text, description, meaning, plural flag and
+  placeholders, differs from the hash the lock file recorded in that commit) and `diff`,
   word-level segments of kind `equal`, `added` or `removed` against the previous
   value. `workingTree` is the uncommitted value on disk, present only when it
   differs from HEAD. Read these flags before you conclude anything:
@@ -133,10 +134,10 @@
     or `outside-project`.
   A commit that removes the key is not listed, renames are not followed, a key
   renamed in the source looks new, and a change brought in by a merge appears on
-  the merge commit, so its `author` and `commit` are the merge's, not
+  the merge commit, so its `author` (the merge commit's author) and `commit` are the merge's, not
   necessarily those of the person who wrote the translation. A value that held an API key comes back as `[REDACTED]` with
   `valueRedacted: true`: it is not the stored text, so never write it back. The
-  scrub finds provider key shapes and the currently configured key values, not
+  scrub finds provider key shapes and the currently configured key values of 8 or more characters, not
   every secret: a bare hex UUID is recognised only next to a key name, so a key
   stored in another shape, such as a former custom key, can come back unmarked.
   Subjects and authors are scrubbed the same way, and a key found in any value,
