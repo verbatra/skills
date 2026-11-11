@@ -63,7 +63,7 @@ there is anything to do.
    provider id, key variable name, network policy, source file and the provider's
    locale support, with no network call and no key read. A failed check carries
    `fix`. See [DOCTOR.md](DOCTOR.md); with no config yet, [INIT.md](INIT.md).
-   **Done when:** no check has `fail`, or you have relayed each `fix` to the human.
+   **Done when:** no check has `fail`; for a failed one, relay its `fix` and rerun `doctor` before any translation, because a failed `api-key` check means a real run fails with `PROVIDER_CONSTRUCTION_FAILED`.
 2. `verbatra diff --json` for the exact pending keys. Exit `0` means stop: there is
    nothing to do and nothing to spend. Counts only: `verbatra check --json`. Every
    `check` option is in [DECIDING.md](DECIDING.md).

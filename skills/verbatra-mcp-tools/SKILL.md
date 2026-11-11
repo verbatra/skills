@@ -67,16 +67,17 @@ Read before you write, and diff before you spend.
    read-only and call no provider. `status.diff` is what you show a human before
    asking for permission to spend.
    **Done when:** you hold the missing, stale and protected keys per locale.
-3. If the fix is one known string, read it with `key.context` first, passing the
-   value you intend to write as `draft`, and fix what its `draftCheck` flags and
-   any `maxLength` it reports. Then use `translation.editEntry`. It is free, it is
+3. If the fix is one known string, read it with `key.context` first. When
+   `valuesRedacted` is false, pass the value you intend to write as `draft` and fix
+   what its `draftCheck` flags; when it is true, omit `draft`, which is refused, and
+   there is no `draftCheck`. Fix any `maxLength` it reports either way. Then use `translation.editEntry`. It is free, it is
    exact, and it goes through the same integrity gate a provider result does,
-   but it replaces a person's value without protection, so read `provenance` in the `key.context` result and ask first when a person wrote it.
+   but it replaces a protected value without a refusal, so read `provenance` in the `key.context` result and ask the user first unless its `origin` is `machine`, `memory`, `fuzzy` or `agent` (ask for `human`, `import`, `external`, `unrecorded` or no provenance). A pinned key is refused with `KEY_PINNED`.
    Prefer it over `translation.retranslateEntry` whenever you already know the
    correct text. To find every broken translation at once, call
    `locale.integrity` rather than `key.integrity` key by key; to search values
    rather than key names, call `locale.values`.
-   **Done when:** the value is written and `key.integrity` or `locale.integrity` shows it passes, or you know why it was refused.
+   **Done when:** `translation.editEntry` returned `accepted: true`, or you know why it was refused. An empty `key.integrity` result is not a pass (it lists a locale only while the key counts as changed); use `locale.integrity` for a separate check.
 4. Before asking, call `translation.estimate` with the same `locales` you intend
    to translate and show its figure next to the diff. It is free.
    **Done when:** you hold the estimate for the locales you will name.
@@ -84,7 +85,7 @@ Read before you write, and diff before you spend.
    `translation.translatePending` for a whole-project run, passing `maxTokens`
    when the human agreed to a ceiling, or `translation.retranslateEntry` for one
    key. Every translation write follows the limits rule in [TOOLS.md](TOOLS.md).
-   **Done when:** the human said yes and the call returned, or you stopped at the missing tool.
+   **Done when:** the human said yes, the call returned, and you reported any refusal (`accepted: false`) and any key left pending, or you stopped at the missing tool.
 6. `review.queue` and `usage.summary` afterwards, to report what needs a human and
    what the run consumed. `report.provenance` counts who wrote each value, and
    `history.list` shows who last committed a change to a locale file; skip it when translation content must stay out of context, because its subjects can quote values even under `--redact-values`, being scrubbed for API keys only ([REDACTION.md](REDACTION.md)). For "who changed this value and when" or "what was this value before", call `history.keyRevisions` with the locale and key (needs `@verbatra/mcp` 0.4.0 or newer: list the tools first, it is absent on 0.3.0), but only after `project.snapshot` reports `valuesRedacted: true` if content must stay out of context; for a change brought in by a merge its `author` is the merge commit's author, so say so when you attribute a change. Read its entry in [RESULTS.md](RESULTS.md) before quoting values or diffs. Record a decision with `review.approve` or

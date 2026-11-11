@@ -85,3 +85,5 @@ failure. Each next step is the hint verbatra prints.
 | `PROVIDER_UNAVAILABLE` | Try again later, or check the configured endpoint. |
 | `NETWORK_POLICY_VIOLATION` | Point the provider at a host the network policy permits, or add its host to `network.allowedHosts` or VERBATRA_NETWORK_ALLOWED_HOSTS. |
 | `PROVIDER_ERROR` | Act on the cause or HTTP status the message names, then check the provider's `baseUrl` (if it takes one), `model` and the rest of the `provider` block in the config. |
+
+When both the config's `network` block and the network environment variables set a policy, a host must satisfy each, so for `NETWORK_POLICY_VIOLATION` one edit may not be enough; see [PROVIDERS.md](PROVIDERS.md).

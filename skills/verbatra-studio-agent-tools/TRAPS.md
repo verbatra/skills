@@ -79,9 +79,10 @@
   user and get the budget before writing. `verbatra_translation_retranslateEntry`
   cannot be given it, so have the user fix the file. Writing a value you checked against
   the budget with `verbatra_translation_editEntry`, which enforces none, is the fallback
-  only when the `provenance` in `verbatra_key_value` or `verbatra_key_context` is not a person's
-  or an import, or when the user says to replace it. A pinned key needs no pre-check: the tool
-  refuses it with `KEY_PINNED`, so relay that refusal. A person's value is replaced without
+  only when the `provenance` `origin` in `verbatra_key_value` or `verbatra_key_context` is `machine`,
+  `memory`, `fuzzy` or `agent`, or when the user says to replace it; for `human`, `import`,
+  `external`, `unrecorded` or no provenance, ask first. A pinned key needs no pre-check: the tool
+  refuses it with `KEY_PINNED`, so relay that refusal. A protected value is otherwise replaced without
   any refusal. On a Studio older than 0.7.0 fixing
   the file does not help, so upgrade first or use that fallback under the same conditions. An unreadable file is usually a
   permissions fix, otherwise another filesystem error; an invalid or non-regular

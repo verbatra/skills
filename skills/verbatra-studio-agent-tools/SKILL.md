@@ -94,8 +94,9 @@ See [GATES.md](GATES.md).
    spends nothing, and it never obtains a translation: exactly the text you send is
    what gets written. It goes through the placeholder and ICU integrity gate first,
    so a rejected value is returned with a reason and nothing is written. It does
-   replace a person's value without protection, so read `provenance` in the
-   `verbatra_key_context` result and ask first when a person wrote it.
+   replace a protected value without a refusal, so read `provenance` in the
+   `verbatra_key_context` result and ask the user first unless its `origin` is
+   `machine`, `memory`, `fuzzy` or `agent`. A pinned key is refused with `KEY_PINNED`.
 6. Before asking, `verbatra_translation_estimate` with the same `locales` you
    intend to translate, and show its figure next to the diff.
 7. Only after an explicit yes, and only if the tool is registered, use the two
