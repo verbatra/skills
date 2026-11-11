@@ -61,10 +61,12 @@
   (no tool reports its version, so ask the user), gives no notice and no file
   budgets, so a missing `maxLength` does not mean no limit. In each case tell the
   user and get the budget before writing. `verbatra_translation_retranslateEntry`
-  cannot be given it, so have the user fix the file, or write a value checked
-  against it with `verbatra_translation_editEntry`, which enforces no budget: keep
-  the value within the budget, or tell the user; on a Studio older than 0.7.0 fixing
-  the file does not help, so upgrade first or write the checked value. An unreadable file is usually a
+  cannot be given it, so have the user fix the file. Writing a value you checked against
+  the budget with `verbatra_translation_editEntry`, which enforces none, is the fallback
+  only when `verbatra_key_value` shows the key is not pinned and its `provenance` is not a
+  person's or an import, or when the user says to replace it; it refuses a pinned key with
+  `KEY_PINNED` and replaces a person's value otherwise. On a Studio older than 0.7.0 fixing
+  the file does not help, so upgrade first or use that fallback under the same conditions. An unreadable file is usually a
   permissions fix, otherwise another filesystem error; an invalid or non-regular
   file is copy-first (ask the user to copy it, since it can hold uncommitted
   budgets), then fix. Limits are advisory and the config's wins per key.
@@ -109,7 +111,7 @@
   `truncated` is `true`, more than 256 distinct keys, one key longer than 4096
   UTF-16 code units, or keys adding up to more than 65,536 UTF-16 code units turned up, and
   every non-empty subject and author name is `[REDACTED]`; it is absent otherwise.
-- `verbatra_history_keyRevisions` answers "who changed this value and when" and
+- `verbatra_history_keyRevisions` (needs `@verbatra/studio` 0.7.0 or newer) answers "who changed this value and when" and
   "what was this value before" for one key in one target locale. Git is the store:
   it runs `git log` and `git cat-file`, calls no provider and writes nothing. Each
   revision carries `commit`, `authorDate`, `author`, `subject`, `value`, `origin`
@@ -135,7 +137,7 @@
     `working-file-unreadable` or `outside-project`.
   A commit that removes the key is not listed, renames are not followed, a key
   renamed in the source looks new, and a change brought in by a merge appears on the
-  merge commit, so its `author` and `commit` are the merge's, not necessarily those
+  merge commit, so its `author` (the merge commit's author) and `commit` are the merge's, not necessarily those
   of the person who wrote the translation. A value that held an API key comes back as
   `[REDACTED]` in its place (the surrounding text is kept, unless `scrub-cap` applies, when the whole non-empty value is `[REDACTED]`) with `valueRedacted: true`: it is not the stored text, so never write it
   back. Redaction covers recognised key shapes and the key values currently
