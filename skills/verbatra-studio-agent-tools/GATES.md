@@ -41,9 +41,12 @@ committed `verbatra.provenance.json`. Never invent a reviewer. The bulk forms
 approves a whole locale's queue, are never registered as tools. The same holds for
 `translation.retranslateEntries`, the dashboard's retranslate-a-selection action,
 and `translation.inFlight`, which only tells the page whether a run is already
-going, and `key.previewIcu`, `key.setMaxLength`, `git.status` and `git.localeDiff`, the dashboard's
-ICU preview, its per-key length limit editor (from Studio 0.7.0; only a person sets a
-limit, so ask the user for the budget) and its git status and locale diff views. There is no agent tool for any of them; act on one key at a time with the
+going, and `key.previewIcu`, `key.setMaxLength`, `translation.previewValueReplace`,
+`translation.applyValueReplace`, `git.status` and `git.localeDiff`, the dashboard's
+ICU preview, its bulk find-and-replace preview and apply actions (from Studio 0.7.0),
+its per-key length limit editor (from Studio 0.7.0; only a person sets a limit, so ask
+the user for the budget) and its git status and locale diff views. There is no agent
+tool for any of them; act on one key at a time with the
 tools in [TOOLS.md](TOOLS.md), and leave bulk decisions to the person at the dashboard. The
 dashboard's keyboard shortcuts drive the same human-only actions and are not
 something an agent triggers. When a person rejects a value, it
