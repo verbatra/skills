@@ -3,13 +3,15 @@ This repository holds verbatra's own agent skills and nothing else. The source o
 Each skill is a folder under `skills/<name>/`. The folder name equals the frontmatter `name`.
 
 - `SKILL.md` is a lean entry (200 lines at most): when to use it, the shared safety rules, a decision flow, and a table linking the depth files. Do not grow it back into a manual.
-- Depth lives in flat sibling `.md` files in the same folder (`COMMANDS.md`, `EXIT-CODES.md`, `TOOLS.md`, and so on), linked from the entry with a relative link such as `[COMMANDS.md](COMMANDS.md)`. Every sibling must be linked from its entry, and every link must resolve.
+- Depth lives in flat sibling `.md` files in the same folder (`COMMANDS.md`, `EXIT-CODES.md`, `TOOLS.md`, and so on), linked from the entry with a relative link such as `[COMMANDS.md](COMMANDS.md)`. Every sibling must be linked from its entry, and every link must resolve. A sibling over 100 lines opens with a table of contents under its title; the validator checks both rules.
 - `agents/openai.yaml` gives each skill an `interface` with `display_name` and `short_description`.
 - A `description` is trigger conditions only ("Use when ..."), 500 characters at most. Do not list commands, tool names or RPC methods in it.
 
 Every table that lists a real surface (commands, formats, providers, doctor checks, error codes, MCP tools, Studio tools) is asserted against the source repository by `scripts/verify-tool-parity.test.mjs`. When you move a table, re-point the test in the same commit and prove the guard still bites by breaking one row.
 
 The five shared safety rules are repeated verbatim in each `SKILL.md` and asserted by the parity suite. Change them everywhere or nowhere.
+
+`SCOPE.md` states what the skills cover and what they leave to the docs site; check a new addition against it.
 
 Checks: `npm run validate`, `npm test`, `npm run check:discovery`, and `SOURCE_ROOT=<verbatra checkout> npm run test:parity`. See `CONTRIBUTING.md` for the release checklist.
 

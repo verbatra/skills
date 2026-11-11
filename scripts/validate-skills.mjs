@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
@@ -20,6 +20,10 @@ const BINARY_EXTENSIONS = /\.(png|jpe?g|gif|webp|ico|svg|pdf|zip|woff2?|ttf)$/i;
 const PIN_DOCUMENTS = ["README.md", "CONTRIBUTING.md"];
 const PINNED_REF_PATTERN = /\b([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)#([0-9a-fA-F]+)\b/g;
 const FULL_SHA_LENGTH = 40;
+const TOC_LINE_THRESHOLD = 100;
+const TOC_MIN_LINKS = 2;
+const RELATIVE_MARKDOWN_LINK = /\]\(([^)\s#:]+\.md)(?:#[^)\s]*)?\)/g;
+const TOC_LINK_LINE = /^\s*- \[[^\]]+\]\(#([^)\s]+)\)\s*$/;
 
 function readSkillDirectories(root) {
   const skillsRoot = resolve(root, "skills");
@@ -174,6 +178,104 @@ function checkSkill(root, name, declaredBy, fail) {
   }
 }
 
+function headingSlug(heading) {
+  return heading
+    .toLowerCase()
+    .replaceAll(/[^\p{L}\p{N} _-]/gu, "")
+    .replaceAll(" ", "-");
+}
+
+function proseLines(content) {
+  const lines = [];
+  let fenced = false;
+  content.split("\n").forEach((line, index) => {
+    if (/^\s*(```|~~~)/.test(line)) {
+      fenced = !fenced;
+      return;
+    }
+    if (!fenced) {
+      lines.push({ line, number: index + 1 });
+    }
+  });
+  return lines;
+}
+
+function checkRelativeLinks(root, relativePath, content, fail) {
+  const directory = dirname(resolve(root, relativePath));
+  for (const { line, number } of proseLines(content)) {
+    for (const match of line.matchAll(RELATIVE_MARKDOWN_LINK)) {
+      if (!existsSync(resolve(directory, match[1]))) {
+        fail(`${relativePath}:${number}: links ${match[1]}, which does not exist`);
+      }
+    }
+  }
+}
+
+function checkTableOfContents(relativePath, content, fail) {
+  const lines = content.split("\n");
+  if (lines.length <= TOC_LINE_THRESHOLD) {
+    return;
+  }
+  const prose = proseLines(content);
+  const firstHeading = prose.findIndex(({ line }) => line.startsWith("## "));
+  const intro = prose.slice(0, firstHeading === -1 ? prose.length : firstHeading);
+  const anchors = intro.map(({ line }) => TOC_LINK_LINE.exec(line)?.[1]).filter(Boolean);
+  if (anchors.length < TOC_MIN_LINKS) {
+    fail(
+      `${relativePath}: has ${lines.length} lines; a reference file over ${TOC_LINE_THRESHOLD} lines ` +
+        `needs a table of contents of at least ${TOC_MIN_LINKS} "- [Heading](#heading)" links ` +
+        "under its title, before the first ## heading",
+    );
+    return;
+  }
+  const slugs = new Set();
+  for (const { line } of prose) {
+    const match = /^#{1,6} (.+)$/.exec(line);
+    if (match === null) {
+      continue;
+    }
+    const base = headingSlug(match[1]);
+    let slug = base;
+    for (let suffix = 1; slugs.has(slug); suffix += 1) {
+      slug = `${base}-${suffix}`;
+    }
+    slugs.add(slug);
+  }
+  for (const anchor of anchors) {
+    if (!slugs.has(anchor)) {
+      fail(`${relativePath}: table of contents links #${anchor}, which matches no heading`);
+    }
+  }
+}
+
+function checkSiblingDocuments(root, name, fail) {
+  const directory = resolve(root, "skills", name);
+  let entries;
+  try {
+    entries = readdirSync(directory).filter((entry) => entry.endsWith(".md")).sort();
+  } catch {
+    return;
+  }
+  const entryPath = `skills/${name}/SKILL.md`;
+  let entryContent = "";
+  try {
+    entryContent = readFileSync(resolve(root, entryPath), "utf8");
+  } catch {
+    entryContent = undefined;
+  }
+  for (const entry of entries) {
+    const relativePath = `skills/${name}/${entry}`;
+    const content = readFileSync(resolve(root, relativePath), "utf8");
+    if (entry !== "SKILL.md" && entryContent !== undefined && !entryContent.includes(`](${entry})`)) {
+      fail(`${entryPath}: does not link ${entry}; every sibling document must be linked from its entry`);
+    }
+    checkRelativeLinks(root, relativePath, content, fail);
+    if (entry !== "SKILL.md") {
+      checkTableOfContents(relativePath, content, fail);
+    }
+  }
+}
+
 function checkAgentInterface(root, name, fail) {
   const relativePath = `skills/${name}/agents/openai.yaml`;
   let content;
@@ -271,6 +373,7 @@ export function validateSkills(root) {
   for (const name of names) {
     checkSkill(root, name, declaredBy, fail);
     checkAgentInterface(root, name, fail);
+    checkSiblingDocuments(root, name, fail);
   }
 
   const modes = gitFileModes(root, fail);
