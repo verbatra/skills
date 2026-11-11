@@ -308,6 +308,53 @@ describe("every rule fires with a precise message", () => {
       "CONTRIBUTING.md:3: pins verbatra/skills#deadbeef, a hex ref of 8 characters; the skills installer resolves a bare commit only when it is a full 40-character SHA, so an abbreviated one fails to clone; pin a tag or the full SHA instead",
     );
   });
+
+  it("rule 19: a sibling document linking a markdown file that does not exist", () => {
+    const root = validFixture({
+      "skills/verbatra-cli/COMMANDS.md": "# Commands\n\nSee [the table](MISSING.md) and [ok](SKILL.md).\n",
+    });
+    expect(validateSkills(root)).toContain(
+      "skills/verbatra-cli/COMMANDS.md:3: links MISSING.md, which does not exist",
+    );
+  });
+
+  it("rule 19: a link inside a fenced block is not checked", () => {
+    const root = validFixture({
+      "skills/verbatra-cli/COMMANDS.md": "# Commands\n\n```md\n[x](MISSING.md)\n```\n",
+    });
+    expect(validateSkills(root)).toEqual([]);
+  });
+
+  it("rule 20: a sibling document over 100 lines without a table of contents", () => {
+    const filler = Array.from({ length: 100 }, (_, index) => `line ${index}`).join("\n");
+    const root = validFixture({
+      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n## One\n\n${filler}\n`,
+    });
+    const lines = `# Commands\n\n## One\n\n${filler}\n`.split("\n").length;
+    expect(validateSkills(root)).toContain(
+      `skills/verbatra-cli/COMMANDS.md: has ${lines} lines; a reference file over 100 lines needs a table of contents of at least 2 "- [Heading](#heading)" links under its title, before the first ## heading`,
+    );
+  });
+
+  it("rule 20: a table of contents link that matches no heading", () => {
+    const filler = Array.from({ length: 100 }, (_, index) => `line ${index}`).join("\n");
+    const toc = "- [One](#one)\n- [Two](#two)\n";
+    const root = validFixture({
+      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n${toc}\n## One\n\n${filler}\n`,
+    });
+    expect(validateSkills(root)).toContain(
+      "skills/verbatra-cli/COMMANDS.md: table of contents links #two, which matches no heading",
+    );
+  });
+
+  it("rule 20: a long document with a matching table of contents is accepted", () => {
+    const filler = Array.from({ length: 100 }, (_, index) => `line ${index}`).join("\n");
+    const toc = "- [One](#one)\n  - [Sub part](#sub-part)\n";
+    const root = validFixture({
+      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n${toc}\n## One\n\n### Sub part\n\n${filler}\n`,
+    });
+    expect(validateSkills(root)).toEqual([]);
+  });
 });
 
 describe("the command-line entry point", () => {
