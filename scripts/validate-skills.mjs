@@ -256,9 +256,19 @@ function checkSiblingDocuments(root, name, fail) {
   } catch {
     return;
   }
+  const entryPath = `skills/${name}/SKILL.md`;
+  let entryContent = "";
+  try {
+    entryContent = readFileSync(resolve(root, entryPath), "utf8");
+  } catch {
+    entryContent = undefined;
+  }
   for (const entry of entries) {
     const relativePath = `skills/${name}/${entry}`;
     const content = readFileSync(resolve(root, relativePath), "utf8");
+    if (entry !== "SKILL.md" && entryContent !== undefined && !entryContent.includes(`](${entry})`)) {
+      fail(`${entryPath}: does not link ${entry}; every sibling document must be linked from its entry`);
+    }
     checkRelativeLinks(root, relativePath, content, fail);
     if (entry !== "SKILL.md") {
       checkTableOfContents(relativePath, content, fail);

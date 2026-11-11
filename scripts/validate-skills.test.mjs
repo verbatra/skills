@@ -63,6 +63,15 @@ function validFixture(overrides = {}) {
   });
 }
 
+function commandsFixture(commands) {
+  return validFixture({
+    "skills/verbatra-cli/SKILL.md": skillFile("verbatra-cli", {
+      body: "# heading\n\nSee [COMMANDS.md](COMMANDS.md).\n",
+    }),
+    "skills/verbatra-cli/COMMANDS.md": commands,
+  });
+}
+
 describe("the validator accepts a well-formed repository", () => {
   it("reports no failures for a valid fixture", () => {
     expect(validateSkills(validFixture())).toEqual([]);
@@ -310,26 +319,20 @@ describe("every rule fires with a precise message", () => {
   });
 
   it("rule 19: a sibling document linking a markdown file that does not exist", () => {
-    const root = validFixture({
-      "skills/verbatra-cli/COMMANDS.md": "# Commands\n\nSee [the table](MISSING.md) and [ok](SKILL.md).\n",
-    });
+    const root = commandsFixture("# Commands\n\nSee [the table](MISSING.md) and [ok](SKILL.md).\n");
     expect(validateSkills(root)).toContain(
       "skills/verbatra-cli/COMMANDS.md:3: links MISSING.md, which does not exist",
     );
   });
 
   it("rule 19: a link inside a fenced block is not checked", () => {
-    const root = validFixture({
-      "skills/verbatra-cli/COMMANDS.md": "# Commands\n\n```md\n[x](MISSING.md)\n```\n",
-    });
+    const root = commandsFixture("# Commands\n\n```md\n[x](MISSING.md)\n```\n");
     expect(validateSkills(root)).toEqual([]);
   });
 
   it("rule 20: a sibling document over 100 lines without a table of contents", () => {
     const filler = Array.from({ length: 100 }, (_, index) => `line ${index}`).join("\n");
-    const root = validFixture({
-      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n## One\n\n${filler}\n`,
-    });
+    const root = commandsFixture(`# Commands\n\n## One\n\n${filler}\n`);
     const lines = `# Commands\n\n## One\n\n${filler}\n`.split("\n").length;
     expect(validateSkills(root)).toContain(
       `skills/verbatra-cli/COMMANDS.md: has ${lines} lines; a reference file over 100 lines needs a table of contents of at least 2 "- [Heading](#heading)" links under its title, before the first ## heading`,
@@ -339,9 +342,7 @@ describe("every rule fires with a precise message", () => {
   it("rule 20: a table of contents link that matches no heading", () => {
     const filler = Array.from({ length: 100 }, (_, index) => `line ${index}`).join("\n");
     const toc = "- [One](#one)\n- [Two](#two)\n";
-    const root = validFixture({
-      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n${toc}\n## One\n\n${filler}\n`,
-    });
+    const root = commandsFixture(`# Commands\n\n${toc}\n## One\n\n${filler}\n`);
     expect(validateSkills(root)).toContain(
       "skills/verbatra-cli/COMMANDS.md: table of contents links #two, which matches no heading",
     );
@@ -350,8 +351,25 @@ describe("every rule fires with a precise message", () => {
   it("rule 20: a long document with a matching table of contents is accepted", () => {
     const filler = Array.from({ length: 100 }, (_, index) => `line ${index}`).join("\n");
     const toc = "- [One](#one)\n  - [Sub part](#sub-part)\n";
+    const root = commandsFixture(`# Commands\n\n${toc}\n## One\n\n### Sub part\n\n${filler}\n`);
+    expect(validateSkills(root)).toEqual([]);
+  });
+
+  it("rule 21: a sibling document the SKILL.md does not link", () => {
     const root = validFixture({
-      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n${toc}\n## One\n\n### Sub part\n\n${filler}\n`,
+      "skills/verbatra-cli/COMMANDS.md": "# Commands\n",
+    });
+    expect(validateSkills(root)).toContain(
+      "skills/verbatra-cli/SKILL.md: does not link COMMANDS.md; every sibling document must be linked from its entry",
+    );
+  });
+
+  it("rule 21: a sibling document the SKILL.md links is accepted", () => {
+    const root = validFixture({
+      "skills/verbatra-cli/SKILL.md": skillFile("verbatra-cli", {
+        body: "# heading\n\nSee [COMMANDS.md](COMMANDS.md).\n",
+      }),
+      "skills/verbatra-cli/COMMANDS.md": "# Commands\n",
     });
     expect(validateSkills(root)).toEqual([]);
   });
@@ -360,9 +378,7 @@ describe("every rule fires with a precise message", () => {
 
   it("rule 20: a document of 100 lines or fewer needs no table of contents", () => {
     const body = Array.from({ length: 95 }, (_, index) => `line ${index}`).join("\n");
-    const root = validFixture({
-      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n## One\n\n${body}\n`,
-    });
+    const root = commandsFixture(`# Commands\n\n## One\n\n${body}\n`);
     expect(validateSkills(root)).toEqual([]);
   });
 
@@ -376,9 +392,7 @@ describe("every rule fires with a precise message", () => {
   });
 
   it("rule 20: a table of contents placed after the first ## heading is rejected", () => {
-    const root = validFixture({
-      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n## One\n\n- [One](#one)\n- [Two](#two)\n\n## Two\n\n${filler}\n`,
-    });
+    const root = commandsFixture(`# Commands\n\n## One\n\n- [One](#one)\n- [Two](#two)\n\n## Two\n\n${filler}\n`);
     expect(
       validateSkills(root).some((failure) => failure.includes("needs a table of contents")),
     ).toBe(true);
@@ -386,24 +400,18 @@ describe("every rule fires with a precise message", () => {
 
   it("rule 20: duplicate headings take GitHub's -1 suffix", () => {
     const toc = "- [Same](#same)\n- [Same](#same-1)\n";
-    const root = validFixture({
-      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n${toc}\n## Same\n\n## Same\n\n${filler}\n`,
-    });
+    const root = commandsFixture(`# Commands\n\n${toc}\n## Same\n\n## Same\n\n${filler}\n`);
     expect(validateSkills(root)).toEqual([]);
   });
 
   it("rule 20: a heading with unicode letters keeps them in its anchor", () => {
     const toc = "- [Zur\u00fcck](#zur\u00fcck)\n- [Two](#two)\n";
-    const root = validFixture({
-      "skills/verbatra-cli/COMMANDS.md": `# Commands\n\n${toc}\n## Zur\u00fcck\n\n## Two\n\n${filler}\n`,
-    });
+    const root = commandsFixture(`# Commands\n\n${toc}\n## Zur\u00fcck\n\n## Two\n\n${filler}\n`);
     expect(validateSkills(root)).toEqual([]);
   });
 
   it("rule 19: a link inside an indented fenced block is not checked", () => {
-    const root = validFixture({
-      "skills/verbatra-cli/COMMANDS.md": "# Commands\n\n   ```md\n   [x](MISSING.md)\n   ```\n",
-    });
+    const root = commandsFixture("# Commands\n\n   ```md\n   [x](MISSING.md)\n   ```\n");
     expect(validateSkills(root)).toEqual([]);
   });
 });

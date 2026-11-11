@@ -244,7 +244,7 @@ once.
 A second workflow, [validate](./.github/workflows/validate.yml), runs offline on every push to
 `main` and every pull request targeting `main`: it checks the frontmatter, the naming rules, the
 file modes, the house style, the pinned refs this README and `CONTRIBUTING.md` hand to a reader,
-that each skill folder's relative `.md` links resolve and its reference files over 100 lines open
+that each skill folder's relative `.md` links resolve, its `SKILL.md` links every sibling file, and its reference files over 100 lines open
 with a table of contents, and that this README indexes exactly the skills that exist. It does not
 check external URLs, heading anchors outside a table of contents, or the README's own links. Then it asks the real installer to
 resolve the repository and confirms it finds every skill and nothing else.
