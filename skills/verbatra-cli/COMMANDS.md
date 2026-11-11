@@ -1,5 +1,8 @@
 # CLI commands reference
 
+- [Commands](#commands)
+- [Flags that are easy to miss](#flags-that-are-easy-to-miss)
+
 ## Commands
 
 Read this table before running anything unattended.
