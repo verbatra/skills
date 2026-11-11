@@ -15,12 +15,12 @@
 
 ## Install
 
-Pick one route per agent: the plugin updates itself, while the installer links the skills into
+Pick one route per agent: the plugin and the installer each have their own update command, and the installer links the skills into
 your agent directory (it symlinks by default; pass `--copy` for editable copies). Using both
 installs every skill twice.
 
 <details>
-<summary><strong>Claude Code</strong> (plugin, updates itself)</summary>
+<summary><strong>Claude Code</strong> (plugin; update with <code>claude plugin update verbatra@verbatra -s project</code>)</summary>
 
 ```bash
 claude plugin marketplace add verbatra/skills
@@ -30,7 +30,7 @@ claude plugin install verbatra@verbatra -s project
 Brings the three skills, the verbatra MCP server with spending off, and a hook that
 checks edited locale files. See [Claude Code plugin](#claude-code-plugin) below.
 
-Update: `claude plugin update verbatra@verbatra`, then restart Claude Code.
+Update: `claude plugin update verbatra@verbatra -s project`, then restart Claude Code.
 
 </details>
 

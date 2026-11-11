@@ -13,7 +13,7 @@ These skills teach a coding agent how to operate verbatra safely through one of 
 ## Out of scope
 
 - The SDK reference. The skills do not document `@verbatra/sdk` functions or types.
-- Copies of the documentation site's tables, guides or recipes. A skill links the page that owns a fact instead of restating it.
+- Copies of the documentation site's tables, guides or recipes. A skill links the page that owns a fact instead of restating it. The exception is a table the parity suite pins against the source (commands, formats, providers, doctor checks, error codes, tools): it is in scope because it cannot drift.
 - Installing, configuring or debugging a project's i18n library, or writing translations.
 - Unreleased behaviour, except where a skill dates it with the version it needs.
 

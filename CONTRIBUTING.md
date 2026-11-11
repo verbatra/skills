@@ -204,7 +204,8 @@ after that verbatra release is out:
 3. Run `SOURCE_ROOT=<checkout of the released source> npm run test:parity`, `npm run validate`,
    `npm test`, `npm run check:discovery` and `claude plugin validate .`. Every one must pass
    before the branch reaches `main`.
-4. Merge to `main`, then re-vendor the three skills in `verbatra/verbatra`.
+4. Bump the pinned tag in `README.md` and `CONTRIBUTING.md` to the new release tag.
+5. Merge to `main`, then re-vendor the three skills in `verbatra/verbatra`.
 
 Cutting a tag is the whole release: `git tag v0.3.0 <commit> && git push origin v0.3.0`. If a
 versioned changelog is ever wanted on top of that, the way to add it is changesets with a private
