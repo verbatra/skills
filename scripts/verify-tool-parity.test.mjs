@@ -74,6 +74,10 @@ function readSkillFile(relativePath) {
   return readFileSync(resolve(SKILLS_ROOT, relativePath), "utf8");
 }
 
+function flowed(text) {
+  return text.replaceAll(/\s+/g, " ");
+}
+
 function readSourceFile(relativePath) {
   return readFileSync(resolve(SOURCE_ROOT, relativePath), "utf8");
 }
@@ -603,7 +607,7 @@ describe("every skill in the pack carries installable frontmatter", () => {
   });
 
   it.each(SKILL_FILES)("%s repeats the shared safety rules verbatim", (path) => {
-    expect(readSkillFile(path)).toContain(SHARED_SAFETY_BLOCK);
+    expect(flowed(readSkillFile(path))).toContain(flowed(SHARED_SAFETY_BLOCK));
   });
 });
 
@@ -863,10 +867,8 @@ describe("prose counts are derived, not remembered", () => {
     const studio = studioRpcMethods();
     const studioOnly = studio.filter((method) => !stdio.includes(method));
     const stdioOnly = stdio.filter((name) => !studio.includes(name));
-    const skill = readSkillFile(STUDIO_SKILL);
-    expect(skill).toContain(
-      `The stdio MCP server has\n${spelled(stdio.length)} tools with dotted names`,
-    );
+    const skill = flowed(readSkillFile(STUDIO_SKILL));
+    expect(skill).toContain(`The stdio MCP server has ${spelled(stdio.length)} tools with dotted names`);
     expect(skill).toContain(`Studio has ${spelled(studio.length)}`);
     expect(skill).toContain(`adds ${spelledOrNone(studioOnly.length)} the stdio server`);
     expect(skill).toContain(`lacks ${spelledOrNone(stdioOnly.length)} the stdio server has`);
