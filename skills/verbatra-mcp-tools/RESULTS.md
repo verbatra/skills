@@ -244,7 +244,9 @@ Read this before you report a result, retry a call, or quote a value, a diff or 
   is the translation for all locales; with `locale` (a configured target locale),
   `translation` and `forbidden` apply to that locale only. `forbidden` replaces the
   whole list for that locale, and `null` or an empty list clears it. `null` clears
-  `translation`, `note` or `partOfSpeech`; clearing the shared translation keeps the
+  `translation`, `note` or `partOfSpeech`; an edit whose term differs only in case
+  from a stored term that does not match case updates that stored term and keeps its
+  spelling, rather than adding a second one; clearing the shared translation keeps the
   term's per-locale data, and the term disappears only once nothing is left.
   `doNotTranslate: true` keeps the term untranslated in every locale, `false` stops
   that, and it combines with no field but `caseSensitive`. An edit that would leave

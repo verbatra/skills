@@ -59,7 +59,11 @@ sent. `doctor` reports the effective policy in its `network-policy` check.
 - `requestTimeoutMs` (default `120000`) bounds each request attempt, not the whole
   retried call. Where a provider retries, a failure after the retries reports the
   last attempt's code: `RATE_LIMITED`, `PROVIDER_UNAVAILABLE`, `PROVIDER_ERROR` or
-  `TIMEOUT`; Gemini also retries a timed-out attempt. Retry wiring differs by
+  `TIMEOUT`; Gemini also retries a timed-out attempt. Gemini reads the wait a 429
+  states and honours it up to 5 seconds; a longer one (an exhausted daily quota)
+  fails at once as `RATE_LIMITED` with the wait in the message, so report that wait
+  to the human instead of retrying. An invalid Gemini key (HTTP 400,
+  `API_KEY_INVALID`) is `AUTH_FAILED` naming `GEMINI_API_KEY`. Retry wiring differs by
   provider: DeepL is built with no retry dependencies, and Google Translate and
   LibreTranslate with network dependencies only, while the LLM providers get retry
   reporting too (`providerFactories` in `packages/sdk/src/config/provider-config.ts`).

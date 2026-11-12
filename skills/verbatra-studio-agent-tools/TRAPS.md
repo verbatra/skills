@@ -198,7 +198,9 @@ Read this before you report a result, retry a call, quote a value, or write one 
 - `verbatra_glossary_write` changes only the parameters you pass. `translation`
   without `locale` is the translation for all locales; with `locale`, `translation`
   and `forbidden` apply to that locale only, and `forbidden` replaces the whole
-  list. `null` clears `translation`, `forbidden`, `note` or `partOfSpeech`; clearing
+  list. A term that differs only in case from a stored term that does not match case
+  updates that stored term and keeps its spelling, rather than adding a second one.
+  `null` clears `translation`, `forbidden`, `note` or `partOfSpeech`; clearing
   the shared translation keeps the term's per-locale data, and the term disappears
   only once nothing is left. `doNotTranslate` combines with no parameter but
   `caseSensitive`. It never retranslates existing keys. Studio loads the config and

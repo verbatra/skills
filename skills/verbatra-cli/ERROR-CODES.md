@@ -82,7 +82,7 @@ failure. Each next step is the hint verbatra prints.
 | `OUTPUT_TRUNCATED` | Translate fewer keys at a time, or configure a model with a larger output limit. |
 | `PROVIDER_REFUSED` | Review the source text the provider refused, or translate it by hand. |
 | `PROVIDER_BLOCKED` | Review the source text the provider blocked, or translate it by hand. |
-| `RATE_LIMITED` | Wait a moment and try again, or lower the concurrency. |
+| `RATE_LIMITED` | Wait as long as the message says, or a moment if it names no time, then try again. If it keeps failing, lower the concurrency or check the provider quota. |
 | `TIMEOUT` | Try again, or raise the provider's `requestTimeoutMs` in the config. |
 | `AUTH_FAILED` | Check that the provider's API key is valid and allowed to use the configured model. |
 | `PROVIDER_UNAVAILABLE` | Try again later, or check the configured endpoint. |
