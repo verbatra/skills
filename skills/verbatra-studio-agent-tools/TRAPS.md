@@ -29,7 +29,9 @@ Read this before you report a result, retry a call, quote a value, or write one 
   ask the human; never change the config's `localeMap` to get past it.
 - `verbatra_usage_summary` reads a snapshot only a real translation run
   refreshes; an unavailable result means no run has ever recorded one, not zero
-  usage. `verbatra_review_queue` is built from the committed files, so every
+  usage. An `incomplete` field (`failed`, `partial`) means that run left locales
+  unfinished, so a low usage figure is not a cheap complete run: report the
+  failed and partial counts with it. `verbatra_review_queue` is built from the committed files, so every
   teammate sees the same queue; an unavailable result means the provenance file
   is corrupt or from a newer verbatra, not an empty queue. A key leaves the
   review queue once its value is approved or rejected, or a person rewrites or
