@@ -5,6 +5,39 @@ they used to live in `verbatra/verbatra` and no longer do.
 
 Requirements: Node.js `^22.22.0 || >=24` and `npm ci` once.
 
+## Writing a skill
+
+A skill is operating guidance for one verbatra surface, not a manual. It tells an agent what to
+run, in what order, what each answer means, and what never to do; the documentation site owns the
+reference ([SCOPE.md](./SCOPE.md)).
+
+**The entry, `SKILL.md`, has a fixed anatomy** (200 lines at most, asserted by the parity suite).
+The validator requires these sections, in this order:
+
+| Section | What it holds |
+| --- | --- |
+| Title and lead | One or two paragraphs: what the surface is and the one fact that makes it dangerous or different. |
+| `## Which surface` | The three-row table that routes the agent to the right sibling skill. |
+| `## Non-negotiable rules` | The five shared safety rules, verbatim, then any surface-specific guardrail. |
+| `## Decision flow` | Numbered steps, each ending on a bold **Done when:** criterion the agent can check. |
+| A surface section, optional | The one thing an agent misreads on this surface (exit codes, a missing tool, the gates). |
+| `## Done when` | A checklist for the whole task: what must be true before the agent reports back. |
+| `## Where the depth lives` | A table from task to sibling file. |
+| `## Reference` | Links to the documentation pages that own the facts. |
+
+**Depth goes into flat sibling files** (`COMMANDS.md`, `TOOLS.md`, and so on) in the same folder.
+Each opens with its title and one "Read this when ..." sentence, has a table of contents when it
+runs past 100 lines, and is linked from the entry; the validator checks all three.
+
+**Voice.** Second person, imperative, present tense. State the behaviour you want, and pair every
+prohibition with the thing to do instead. Put a branch (several situations, several answers) in a
+table or a list, never in a paragraph. Cut any sentence that does not change what the agent does.
+
+**One owner per fact, within a skill.** Each fact lives in one file; every other file in that
+skill gives it a pointer. Across skills, repeat what each one needs instead of linking another
+skill's folder: a skill can be installed on its own, so a cross-folder link can dangle. The five
+safety rules are the deliberate exception and are repeated verbatim in every entry.
+
 ## Adding a skill
 
 1. Create `skills/<name>/SKILL.md`. **The directory name is the skill name.** The frontmatter
@@ -31,16 +64,20 @@ Requirements: Node.js `^22.22.0 || >=24` and `npm ci` once.
    **A description triggers loading; it does not index the surface.** Write one sentence on what
    the skill does, a "Use when ..." sentence with the trigger conditions, and, only when they
    exist, an "Also use when ..." sentence for the secondary ones (a missing tool, a refused
-   action). Aim for about 300 characters. Do not list the commands, tool
+   action). Write each trigger in the words a user or a tool result would use, keep it on one
+   line, and aim for about 300 characters. Do not list the commands, tool
    names or RPC methods: the body table already lists every one of them, the parity suite already
    asserts that table against the registry, and a second hand-kept copy in the frontmatter can
    only drift out of it. `scripts/verify-tool-parity.test.mjs` enforces this, allowing a
    description to anchor on at most two real identifiers before it counts as an enumeration.
-3. Add the bullet to the `## Skills` section of `README.md`. The validator fails if a skill is
-   missing from the index, and fails if the index names a skill that does not exist.
-4. If the skill enumerates a real surface (commands, formats, providers, tool names, RPC methods),
+3. Write the body to the anatomy above, and give the skill an `agents/openai.yaml` with
+   `interface.display_name` and `interface.short_description`.
+4. Add the row to the `## Which skill` table of `README.md`, and to the `## Which surface` table
+   of every entry. The validator fails if a skill is missing from the README, and fails if the
+   README names a skill that does not exist.
+5. If the skill enumerates a real surface (commands, formats, providers, tool names, RPC methods),
    add the matching assertions to `scripts/verify-tool-parity.test.mjs`. See the next section.
-5. Run both checks locally (see "Running the checks").
+6. Run every check locally (see "Running the checks").
 
 House rules, enforced by the validator: English only, no emoji, and the em dash character U+2014
 must never appear. Use a spaced hyphen, a colon, or parentheses instead. Tracked files must be
@@ -53,28 +90,32 @@ commit SHA; an abbreviated SHA is rejected, because the installer cannot resolve
 
 **A table in a skill that lists a real surface is asserted against the code that defines that
 surface.** `scripts/verify-tool-parity.test.mjs` reads the registries in `verbatra/verbatra` and
-compares them to the tables and the spelled-out counts in the three skill documents:
+compares them to the tables and the spelled-out counts in the skill files:
 
 | Skill claim | Source of truth in `verbatra/verbatra` |
 | --- | --- |
-| `## Commands` table in `verbatra-cli` | `.command("...")` registrations in `packages/cli/src/run.ts` |
-| `## Formats` table in `verbatra-cli` | `SUPPORTED_FORMATS` in `packages/core/src/model/supported-format.ts` |
-| `## Providers` first column in `verbatra-cli` | the `id` literals of `providerConfigSchema` in `packages/sdk/src/config/provider-config.ts`, every one but `none` backed by `providerFactories` |
-| `## Providers` second column in `verbatra-cli` | `PROVIDER_ENV` and `OPENAI_COMPATIBLE_ENV_VAR` in `packages/ai-providers/src/key-env-vars.ts`; `none` names no variable |
-| `## doctor` table in `verbatra-cli` | `"config"` then `CONFIG_DEPENDENT_IDS` in `packages/sdk/src/flow/doctor.ts`, in order; every other `DoctorCheckId` is a row of the `### Checks that replace the setup run` table under it |
-| `## Error and notice codes` table in `verbatra-cli` | every `SdkErrorCode` in `packages/sdk/src/errors.ts`, once each; any other code must be in `CLI_ERROR_CODES` in `packages/cli/src/cli-error-codes.ts`, which that table and the `init` failure table under `## Setting a project up` cover between them |
-| `## Provider error codes` table in `verbatra-cli` | every member of `ProviderErrorCode` in `packages/ai-providers/src/errors.ts`, with its runtime `PROVIDER_ERROR_CODES` list |
-| Notice code list under `## Error and notice codes` in `verbatra-cli` | `SdkNoticeCode` in `packages/sdk/src/flow/summary.ts` |
-| `## Tools` table in `verbatra-mcp-tools` | `ALL_TOOLS_IN_ORDER` and `SPEND_TOOL_NAMES` in `packages/mcp/src/tools/registry.ts`, cross-checked against every `name:` declared under `packages/mcp/src/tools/` |
-| `## Tools` table in `verbatra-studio-agent-tools` | `rpcParamsSchemas` in `packages/studio/src/shared/rpc/contract.ts` less `HUMAN_ONLY_METHOD_NAMES`, the `*_METHOD` constants beside it, and the `TOOL_DESCRIPTORS` (with their `spendGated` flag) in `packages/studio/src/webmcp/register-tools.ts`; every `HUMAN_ONLY_METHOD_NAMES` method is named under `## Two gates, not one` |
-| `.mcp.json` in the Claude Code plugin | the `version` in `packages/mcp/package.json`, and the flags and `ALLOW_SPEND_ENV_VAR` in `packages/mcp/src/bin.ts` |
+| `## Commands` in `verbatra-cli/COMMANDS.md` | `.command("...")` registrations in `packages/cli/src/run.ts` |
+| `## Formats` in `verbatra-cli/FORMATS.md` | `SUPPORTED_FORMATS` in `packages/core/src/model/supported-format.ts` |
+| `## Providers`, first column, in `verbatra-cli/PROVIDERS.md` | the `id` literals of `providerConfigSchema` in `packages/sdk/src/config/provider-config.ts`, every one but `none` backed by `providerFactories` |
+| `## Providers`, second column | `PROVIDER_ENV`, `OPENAI_COMPATIBLE_ENV_VAR` and `LIBRETRANSLATE_ENV_VAR` in `packages/ai-providers/src/key-env-vars.ts`; `none` names no variable |
+| `## doctor` in `verbatra-cli/DOCTOR.md` | `"config"` then `CONFIG_DEPENDENT_IDS` in `packages/sdk/src/flow/doctor.ts`, in order; every other `DoctorCheckId` is a row of `### Checks that replace the setup run` under it |
+| `## Error and notice codes` in `verbatra-cli/ERROR-CODES.md` | every `SdkErrorCode` in `packages/sdk/src/errors.ts`, once each; any other code must be in `CLI_ERROR_CODES` in `packages/cli/src/cli-error-codes.ts`, which that table and the failure table under `## Setting a project up` in `verbatra-cli/INIT.md` cover between them |
+| `## Provider error codes` in `verbatra-cli/ERROR-CODES.md` | every member of `ProviderErrorCode` in `packages/ai-providers/src/errors.ts`, with its runtime `PROVIDER_ERROR_CODES` list, and each next step quoted verbatim from `PROVIDER_ERROR_HINTS` in `packages/sdk/src/error-hints.ts` |
+| Notice code list in `verbatra-cli/ERROR-CODES.md` | `SdkNoticeCode` in `packages/sdk/src/flow/summary.ts` |
+| `## Tools` in `verbatra-mcp-tools/TOOLS.md` | `ALL_TOOLS_IN_ORDER` and `SPEND_TOOL_NAMES` in `packages/mcp/src/tools/registry.ts`, cross-checked against every `name:` declared under `packages/mcp/src/tools/` |
+| `## Tools` in `verbatra-studio-agent-tools/TOOLS.md` | `rpcParamsSchemas` in `packages/studio/src/shared/rpc/contract.ts` less `HUMAN_ONLY_METHOD_NAMES`, the `*_METHOD` constants beside it, and the `TOOL_DESCRIPTORS` (with their `spendGated` flag) in `packages/studio/src/webmcp/register-tools.ts`; every `HUMAN_ONLY_METHOD_NAMES` method is named under `## Two gates, not one` in `GATES.md` |
+| The five safety rules in every `SKILL.md` | the block in the parity suite itself, compared with whitespace normalized |
+| `.mcp.json` in the Claude Code plugin | the `version` in `packages/mcp/package.json`, and the flags and `ALLOW_SPEND_ENV_VAR` in `packages/mcp/src/bin.ts` (and `bin-args.ts` when present) |
 | `checkArguments` and `fileCheckArguments` in `hooks/check-locale-edit.mjs` | the `check` command's `.option(...)` registrations in `packages/cli/src/run.ts` |
 | Counts spelled out in prose ("one of these fourteen", "registers ... but advertises only ...") | derived from the same registries, never remembered |
-| Frontmatter `description` in all three skills | the same registries, asserted negatively: a description must name at most two real identifiers, so it cannot grow back into a stale second index |
+| Frontmatter `description` in all three skills | the same registries, asserted negatively: a description must name at most two real identifiers (a bare command word such as "translate" counts), so it cannot grow back into a stale second index |
 
 Why it exists: a skills pack is prose an agent trusts. Without a guard, the first renamed tool or
 added format turns that prose into confident, wrong instructions, and nothing fails. The guard is
 the reason the pack is worth shipping at all.
+
+When you move a table or a pinned sentence, re-point the test in the same commit and prove the
+guard still bites by breaking one row.
 
 Because the source of truth is in another repository, the failure is now post-hoc: a change in
 `verbatra/verbatra` that renames a tool merges green there and turns this repository red
@@ -93,9 +134,9 @@ npm ci
 The offline checks, which are what `validate.yml` runs:
 
 ```bash
-npm run validate   # frontmatter, naming, file modes, house style, pinned refs, README index,
-                   # relative .md links in each skill folder, tables of contents over 100 lines
-npm test           # the validator's own fixture suite, one fixture per rule
+npm run validate   # frontmatter, entry sections, naming, file modes, house style, pinned refs,
+                   # README index, relative .md links, tables of contents over 100 lines
+npm test           # the validator's fixture suite (one fixture per rule) and the hook's tests
 ```
 
 The parity suite needs a checkout of `verbatra/verbatra`. It looks for a sibling directory named
@@ -163,9 +204,11 @@ server is declared in `.mcp.json` and the hook in `hooks/hooks.json`, which runs
   claude plugin validate .
   ```
 
-  It reports one warning, that `plugin.json` has no `version`. That is deliberate: without
-  one, every commit on `main` reaches installed plugins as an update, which matches how this
-  repository releases.
+  It passes with warnings, all expected: `plugin.json` has no `version`, deliberately, so that
+  every commit on `main` reaches installed plugins as an update, which matches how this
+  repository releases; `CLAUDE.md` at the plugin root is not loaded as project context, which is
+  right, since it is for contributors; and the plugin directory checks note that there is no
+  icon.
 - Try a change before it merges by adding your checkout as a marketplace:
   `claude plugin marketplace add /path/to/your/skills`, then
   `claude plugin install verbatra@verbatra`.
