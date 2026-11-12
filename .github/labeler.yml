@@ -1,0 +1,18 @@
+"scope: skills":
+  - changed-files:
+      - any-glob-to-any-file:
+          - skills/**
+          - hooks/**
+          - .claude-plugin/**
+
+"scope: docs":
+  - changed-files:
+      - any-glob-to-any-file:
+          - README.md
+          - SCOPE.md
+
+"scope: ci":
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+          - scripts/**

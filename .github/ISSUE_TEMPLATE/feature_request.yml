@@ -1,7 +1,7 @@
 name: Skill request
 description: Suggest a new skill, or coverage an existing skill is missing.
-title: "[Request]: "
-labels: ["enhancement"]
+labels: ["type: feature", "scope: skills", "needs triage"]
+type: Feature
 body:
   - type: dropdown
     id: kind
