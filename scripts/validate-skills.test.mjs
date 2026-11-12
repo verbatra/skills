@@ -20,8 +20,15 @@ afterEach(() => {
   }
 });
 
-function skillFile(name, { description = GOOD_DESCRIPTION, body = "# heading\n" } = {}) {
-  return `---\nname: ${name}\ndescription: ${description}\nlicense: MIT\n---\n\n${body}`;
+const ENTRY_SECTIONS =
+  "\n## Which surface\n\n## Non-negotiable rules\n\n## Decision flow\n\n## Done when\n" +
+  "\n## Where the depth lives\n\n## Reference\n";
+
+function skillFile(
+  name,
+  { description = GOOD_DESCRIPTION, body = "# heading\n", sections = ENTRY_SECTIONS } = {},
+) {
+  return `---\nname: ${name}\ndescription: ${description}\nlicense: MIT\n---\n\n${body}${sections}`;
 }
 
 function readmeFor(names, install = "") {
@@ -111,6 +118,42 @@ describe("the validator accepts a well-formed repository", () => {
 });
 
 describe("every rule fires with a precise message", () => {
+  it("rule 21: an entry missing one of the fixed sections", () => {
+    const root = validFixture({
+      "skills/verbatra-cli/SKILL.md": skillFile("verbatra-cli", {
+        sections: ENTRY_SECTIONS.replace("\n## Done when\n", ""),
+      }),
+    });
+    expect(validateSkills(root)).toEqual([
+      'skills/verbatra-cli/SKILL.md: has no "## Done when" section; every entry carries ' +
+        '"## Which surface", "## Non-negotiable rules", "## Decision flow", "## Done when", ' +
+        '"## Where the depth lives", "## Reference", in that order',
+    ]);
+  });
+
+  it("rule 21: an entry with its fixed sections out of order", () => {
+    const root = validFixture({
+      "skills/verbatra-cli/SKILL.md": skillFile("verbatra-cli", {
+        sections:
+          "\n## Which surface\n\n## Decision flow\n\n## Non-negotiable rules\n\n## Done when\n" +
+          "\n## Where the depth lives\n\n## Reference\n",
+      }),
+    });
+    expect(validateSkills(root)).toEqual([
+      'skills/verbatra-cli/SKILL.md: "## Decision flow" comes before the section that should ' +
+        "precede it",
+    ]);
+  });
+
+  it("rule 21: a section heading inside a fenced block does not count", () => {
+    const root = validFixture({
+      "skills/verbatra-cli/SKILL.md": skillFile("verbatra-cli", {
+        sections: `\n\`\`\`md${ENTRY_SECTIONS}\`\`\`\n`,
+      }),
+    });
+    expect(validateSkills(root)).toHaveLength(6);
+  });
+
   it("rule 1: a skills directory with no SKILL.md", () => {
     const root = validFixture({
       "README.md": readmeFor(["verbatra-cli", "orphan"]),
