@@ -289,7 +289,8 @@ When an issue arrives, or once a day from the `label:"needs triage"` filter:
 4. Check the `scope:` label (the forms set `scope: skills`).
 5. A wrong skill: check the claim against the source, not the skill's text. If you cannot see the
    problem, add `needs reproduction` (the `Issue triage` workflow asks for one and the `Stale` timer
-   starts); if the installed ref or the verbatra version is missing, add `needs info`. When the
+   starts); if the installed ref or the verbatra version is missing, first comment what is missing,
+   then add `needs info`: the bot's message points at that comment. When the
    reporter replies, the issue goes back to `needs triage` on its own.
 6. Confirmed or accepted: add `status: accepted`, plus `good first issue` or `help wanted` if it
    suits someone else.
