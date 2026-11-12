@@ -79,8 +79,9 @@ To fill translations, never run `verbatra translate` to find out whether there i
 1. `verbatra doctor --json`: config, format, provider, key variable (by name), network policy,
    source file and the provider's locale support, with no network call and no key read
    ([DOCTOR.md](DOCTOR.md)).
-   **Done when:** no check has `fail`, or you relayed each failed check's `fix` and reran
-   `doctor`. A failed `api-key` check means a real run fails with `PROVIDER_CONSTRUCTION_FAILED`.
+   **Done when:** no check has `fail`. For a failed one, relay its `fix` and rerun `doctor`
+   before any real run: a failed `api-key` check means it fails with
+   `PROVIDER_CONSTRUCTION_FAILED`.
 2. `verbatra diff --json` for the exact pending keys per locale.
    **Done when:** you hold them, or exit `0` told you there is nothing to do and nothing to spend.
 3. `verbatra translate --estimate --json` for what the run would send and cost. It constructs no

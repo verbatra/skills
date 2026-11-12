@@ -83,8 +83,9 @@ Read the key's `provenance` first and ask the user unless its `origin` is `machi
    **Done when:** the call returned and you reported every refusal and every key left pending,
    or you stopped at a missing tool.
 6. Report with `review.queue` (what needs a person) and `usage.summary` (what the run
-   consumed). For who changed a value and what it was before, `history.keyRevisions`; read its
-   flags in [RESULTS.md](RESULTS.md) before quoting anything. Record `review.approve` or
+   consumed). For who changed a value and what it was before, `history.keyRevisions`; it
+   returns translation content, so read [REDACTION.md](REDACTION.md) first when content must stay
+   out of context, and its flags in [RESULTS.md](RESULTS.md) before quoting anything. Record `review.approve` or
    `review.reject` only when the user tells you to, under the name they give.
    **Done when:** your report names what needs a person and what the run consumed.
 
