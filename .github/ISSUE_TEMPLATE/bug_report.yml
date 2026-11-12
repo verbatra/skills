@@ -1,7 +1,7 @@
 name: Skill is wrong or out of date
 description: A skill tells an agent something that does not match what verbatra actually does.
-title: "[Skill]: "
-labels: ["bug"]
+labels: ["type: bug", "scope: skills", "needs triage"]
+type: Bug
 body:
   - type: markdown
     attributes:
@@ -27,6 +27,15 @@ body:
       placeholder: v0.2.0
     validations:
       required: true
+
+  - type: input
+    id: last-working-ref
+    attributes:
+      label: Last version that worked
+      description: If an earlier skill ref told the agent the right thing, which one. Leave empty if it never did or you have not tried.
+      placeholder: v0.1.0
+    validations:
+      required: false
 
   - type: input
     id: verbatra-version
@@ -58,7 +67,7 @@ body:
     id: actual
     attributes:
       label: What verbatra actually does
-      description: The real behavior, and where you saw it (command output, docs page, or source file).
+      description: The real behavior, and where you saw it (command output, docs page, or source file). If the agent went wrong, include the prompt you gave it and the command it ran. Without a reproduction the issue is labelled `needs reproduction` and closes after 21 days.
     validations:
       required: true
 
