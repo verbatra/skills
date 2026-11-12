@@ -27,7 +27,8 @@ The validator requires these sections, in this order:
 
 **Depth goes into flat sibling files** (`COMMANDS.md`, `TOOLS.md`, and so on) in the same folder.
 Each opens with its title and one "Read this when ..." sentence, has a table of contents when it
-runs past 100 lines, and is linked from the entry; the validator checks all three.
+runs past 100 lines, and is linked from the entry; the validator checks the link and the table
+of contents.
 
 **Voice.** Second person, imperative, present tense. State the behaviour you want, and pair every
 prohibition with the thing to do instead. Put a branch (several situations, several answers) in a
