@@ -262,3 +262,40 @@ because three skills with no published artifact do not yet earn the ceremony.
 Conventional Commits, for example `feat(verbatra-cli): document the extract command` or
 `fix(parity): follow the renamed rpc contract`. `main` is protected by the two workflows; every
 change after the initial scaffold goes through a pull request.
+
+## Triage
+
+Four more workflows keep issues and pull requests labelled, and none of them checks out or runs
+code from a pull request. `pr-labels.yml` adds `scope:` labels from the changed paths in
+`.github/labeler.yml` and a `type:` label (plus `breaking change` for a `!`) from the Conventional
+Commit title. `issue-triage.yml` posts a fixed request when `needs reproduction` or `needs info` is
+added, removes `needs triage` on close, and puts an issue back into `needs triage` when its author
+replies. `stale.yml` marks only those two labels `stale` after 14 quiet days and closes the issue as
+not planned 7 days later. `welcome.yml` greets a first issue and a first pull request.
+
+Labels come in groups, the same here as in `verbatra/verbatra` and `verbatra/action`, so a
+transferred issue keeps them: `type:` says what kind of work it is, `scope:` which area it touches,
+`status:` where it stands, and `resolution:` why it was closed. The full list is on the
+[labels page](https://github.com/verbatra/skills/labels); the source repository's
+`scripts/sync-labels.sh verbatra/skills` keeps it in step.
+
+When an issue arrives, or once a day from the `label:"needs triage"` filter:
+
+1. A security problem reported in public: hide it, ask for a private advisory, and open a draft
+   advisory yourself.
+2. A question, or verbatra itself misbehaving while the skill describes it correctly: transfer it
+   to `verbatra/verbatra`, where a question becomes a Discussion in Q&A.
+3. A duplicate: link the original and close it as a duplicate with `resolution: duplicate`.
+4. Check the `scope:` label (the forms set `scope: skills`).
+5. A wrong skill: check the claim against the source, not the skill's text. If you cannot see the
+   problem, add `needs reproduction` (the `Issue triage` workflow asks for one and the `Stale` timer
+   starts); if the installed ref or the verbatra version is missing, add `needs info`. When the
+   reporter replies, the issue goes back to `needs triage` on its own.
+6. Confirmed or accepted: add `status: accepted`, plus `good first issue` or `help wanted` if it
+   suits someone else.
+7. Not doing it: add `resolution: wontfix` and close it as not planned with one sentence saying why.
+8. Remove `needs triage`. The filter should be empty at the end.
+
+For a pull request: check the labels the workflow set, approve the first workflow run of a
+first-time contributor only after reading the diff, and confirm the parity suite ran if a table
+changed.
