@@ -1,11 +1,12 @@
-# CLI commands reference
+# What each command costs and writes
+
+Read this before running anything unattended: what each command costs, what it writes, and the
+flags that change either.
 
 - [Commands](#commands)
 - [Flags that are easy to miss](#flags-that-are-easy-to-miss)
 
 ## Commands
-
-Read this table before running anything unattended.
 
 | Command | Provider spend | Writes files | Needs a key |
 | --- | --- | --- | --- |

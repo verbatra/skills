@@ -1,5 +1,8 @@
 # Error and notice code reference
 
+Read this when a command or a locale failed with a `code`, or a run carried notices. Branch on the
+code, never on the message.
+
 ## Error and notice codes
 
 A whole-command failure exits `2` with one of these as `code`. Each code has an

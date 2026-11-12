@@ -1,4 +1,6 @@
-# Human output on stderr
+# What a person sees
+
+Read this when you describe a terminal run to a person or decide which output flags to pass.
 
 Everything below is for a person watching a terminal and goes to stderr, except
 the `studio` session URL, which goes to stdout. `--json` output is byte-identical

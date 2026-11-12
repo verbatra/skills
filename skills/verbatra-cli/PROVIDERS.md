@@ -1,5 +1,8 @@
 # Provider keys and behaviour
 
+Read this before choosing a provider, naming its key variable, or explaining why a provider
+refused a host, a locale or a value.
+
 ## Providers
 
 | Provider id | Key variable |
