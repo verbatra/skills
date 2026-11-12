@@ -126,7 +126,7 @@ Read this before you report a result, retry a call, or quote a value, a diff or 
 - `history.keyRevisions` (needs `@verbatra/mcp` 0.4.0 or newer; absent from the tool list on 0.3.0) answers "who changed this value and when" and "what was
   this value before" for one key in one target locale. Git is the store: it runs
   `git log` and `git cat-file`, calls no provider and writes nothing, so use it
-  freely. Each revision carries `commit`, `authorDate`, `author`, `subject`, the
+  freely. Each revision carries `commit`, `authorDate`, `author` (the name, never the email), `subject`, the
   `value` at that commit, `origin` (the write path recorded in
   `verbatra.provenance.json` in that commit, absent when that file could not be
   read), `sourceChanged` (`true`, `false` or `"unknown"`: whether the content hash of the key's
