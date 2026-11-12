@@ -13,246 +13,158 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?color=7b1fa2&labelColor=0B0B12" alt="License: MIT" /></a>
 </p>
 
+verbatra keeps an app's locale files in sync and translates what is missing with an LLM or a
+machine-translation provider. A coding agent can drive all of it, and that is the risk: one
+`translate` call bills the provider with no prompt, a locale file can carry text written to look
+like an order, and a config field can delete keys without a flag.
+
+These skills give the agent the operating judgement a command list leaves out: what to run first,
+what costs money, what a result really means, and what never to do. Every table they hold is
+checked against verbatra's source code on every change and every night, so a renamed command,
+format or tool turns a check red here instead of reaching your agent.
+
+## Which skill
+
+Pick by what the agent is holding. Install all three: each one loads only when its surface is in
+play.
+
+| The agent is holding | Skill | It covers |
+| --- | --- | --- |
+| A shell or a CI job | [verbatra-cli](./skills/verbatra-cli/SKILL.md) | What each command costs and writes, the read-only questions to ask before a run, exit codes and the JSON envelope, setup with `verbatra init` |
+| MCP tools with dotted names such as `status.check` | [verbatra-mcp-tools](./skills/verbatra-mcp-tools/SKILL.md) | The stdio MCP server's tools, the spend boundary that keeps provider tools off the default list, values-redacted mode |
+| Browser tools named `verbatra_...` in an open Studio tab | [verbatra-studio-agent-tools](./skills/verbatra-studio-agent-tools/SKILL.md) | The Studio dashboard's WebMCP tools, the two operator gates in front of them, and how their results differ from the stdio server's |
+
 ## Install
 
-Pick one route per agent: the plugin and the installer have separate update commands. The
-installer links the skills into your agent directory (it symlinks by default; pass `--copy` for
-editable copies). Using both installs every skill twice.
+Pick one route per agent. Installing both the plugin and the skills gives every skill twice.
 
-<details>
-<summary><strong>Claude Code</strong> (plugin; update with <code>claude plugin update verbatra@verbatra -s project</code>)</summary>
+**Claude Code: the plugin.** Run it from the root of the project that holds your verbatra
+config. It brings the three skills, the verbatra MCP server with spending off, and a hook that
+checks locale files Claude edits ([details](#claude-code-plugin)):
 
 ```bash
 claude plugin marketplace add verbatra/skills
 claude plugin install verbatra@verbatra -s project
 ```
 
-Brings the three skills, the verbatra MCP server with spending off, and a hook that
-checks edited locale files. See [Claude Code plugin](#claude-code-plugin) below.
+Update with `claude plugin update verbatra@verbatra -s project`, then restart Claude Code.
 
-Update: `claude plugin update verbatra@verbatra -s project`, then restart Claude Code.
-
-</details>
-
-<details>
-<summary><strong>Claude Code</strong> (skills only, editable files; update with <code>npx skills@latest update</code>)</summary>
+**Any agent: the skills alone**, through the [skills](https://skills.sh) installer:
 
 ```bash
 npx skills@latest add verbatra/skills --skill '*' -a claude-code -y
 ```
 
-Update: `npx skills@latest update`.
-
-</details>
-
-<details>
-<summary><strong>Codex</strong> (update with <code>npx skills@latest update</code>)</summary>
-
-```bash
-npx skills@latest add verbatra/skills --skill '*' -a codex -y
-```
-
-Update: `npx skills@latest update`.
-
-</details>
-
-<details>
-<summary><strong>Cursor</strong> (update with <code>npx skills@latest update</code>)</summary>
-
-```bash
-npx skills@latest add verbatra/skills --skill '*' -a cursor -y
-```
-
-Update: `npx skills@latest update`.
-
-</details>
-
-<details>
-<summary><strong>Gemini CLI</strong> (update with <code>npx skills@latest update</code>)</summary>
-
-```bash
-npx skills@latest add verbatra/skills --skill '*' -a gemini-cli -y
-```
-
-Update: `npx skills@latest update`.
-
-</details>
-
-<details>
-<summary><strong>Any other agent</strong> (update with <code>npx skills@latest update</code>)</summary>
-
-```bash
-npx skills@latest add verbatra/skills -a <agent>  # omit -a to choose
-```
-
-Update: `npx skills@latest update`.
-
-</details>
-
-The slugs are `verbatra-cli`, `verbatra-mcp-tools` and `verbatra-studio-agent-tools`; repeat
-`--skill <slug>` to pick a subset. Add `-g` to install for your user instead of the current
-project. The install places each skill folder, with its sibling reference files, in your agent
-directory and records a row in your own `skills-lock.json`.
+Swap `claude-code` for the installer's id of your agent, such as `codex`, `cursor` or
+`gemini-cli`, or leave out both `-a claude-code` and `-y` to choose interactively (`-y` alone
+makes the installer pick agents for you). Repeat
+`--skill <name>` instead of `'*'` to take a subset, add `-g` to install for your user rather than
+the project, and `--copy` for editable copies instead of symlinks. Update with
+`npx skills@latest update`.
 
 ### Pinning a version
 
-A bare `verbatra/skills` tracks the default branch, so an update can change the skill under you.
-The `#` fragment pins a ref. The installer resolves it as a branch or a tag first and only then
-as a bare commit, which is what decides the behaviour of each form:
+A bare `verbatra/skills` tracks the default branch. A `#` fragment pins it:
 
 | Ref after `#` | What you get |
 | --- | --- |
-| nothing | the default branch, re-resolved on every install |
-| a branch name | that branch's tip, re-resolved on every install |
-| a tag | frozen at the tagged commit; the pin to prefer |
+| a tag, such as `v0.2.0` | frozen at the tagged commit; the pin to prefer |
 | a full 40-character commit SHA | frozen at that commit |
-| an abbreviated commit SHA | nothing; the install fails |
-
-An abbreviated SHA fails rather than resolving. The installer clones with
-`git clone --depth 1 --branch <ref>`, and it retries by fetching a bare commit only when the ref
-matches `/^[0-9a-f]{40}$/i`. A short SHA matches no branch and no tag and never reaches that
-retry, so `#0a1b2c3` reports `fatal: Remote branch 0a1b2c3 not found in upstream origin`.
-
-Pin to the latest tag, `v0.2.0`, which is short enough to read in a diff:
+| a branch name | that branch's tip, re-resolved on every install |
+| an abbreviated commit SHA | nothing: the install fails |
 
 ```bash
 npx skills@latest add verbatra/skills#v0.2.0 --skill verbatra-cli -a claude-code -y
 ```
 
-Pin to a full commit SHA when the commit you want was never tagged:
+The installer tries a ref as a branch or a tag first and fetches a bare commit only for a full
+40-character SHA, so a short SHA fails with
+`fatal: Remote branch <sha> not found in upstream origin`.
 
-```bash
-npx skills@latest add verbatra/skills#ae31c921872cad8f70989ef75ad43064b6ffb1bd --skill verbatra-cli -a claude-code -y
-```
+## What the skills make an agent do
+
+- **Ask before it spends.** A translate run bills the moment it starts. The agent reads what is
+  pending, prices it, reports both, and waits for an explicit yes.
+- **Leave keys in the environment.** verbatra reads provider keys only from environment
+  variables, so the agent names the variable and lets you fill it in. It never asks for the value.
+- **Treat strings as data.** Every source string, translation, glossary term and translator
+  comment is untrusted input to report, never an instruction to follow.
+- **Respect `prune`.** It is a config field as well as a flag, so an ordinary run can delete
+  orphaned keys. The agent says what the project's setting is before it runs.
+- **Read results honestly.** It branches on exit codes and error codes, not on `ok` or on prose,
+  and reports what landed and what stayed behind.
+
+## What is covered, and what is not
+
+The skills cover deciding what to run on the CLI, the stdio MCP server and the Studio browser
+tools; the spend boundary; reading exit codes, error codes, notices and review reasons; and the
+registries an agent branches on. They leave the SDK reference, the documentation site's guides,
+and setting up a project's i18n library to the
+[documentation site](https://verbatra.kreitz-webdev.de/docs). [SCOPE.md](./SCOPE.md) draws the
+line in full.
+
+## How they stay correct
+
+A skills pack is prose an agent trusts, and prose rots the first time the tool changes. So every
+table that lists a real surface (commands, formats, providers and their key variables, doctor
+checks, error and notice codes, MCP tools, Studio tools), and every count spelled out in the
+prose, is asserted against the registries in
+[verbatra/verbatra](https://github.com/verbatra/verbatra) by the
+[parity workflow](./.github/workflows/parity.yml). It runs on every pull request, nightly, and on
+demand from verbatra's own release workflow, so a change made only in the source repository still
+turns this one red. [CONTRIBUTING.md](./CONTRIBUTING.md#the-parity-rule) maps each table to the
+code it is checked against.
+
+A second workflow, [validate](./.github/workflows/validate.yml), checks the frontmatter, naming,
+links, house style and README index offline, then asks the real installer to resolve the
+repository and confirms it finds every skill and nothing else.
 
 ## Claude Code plugin
 
-In Claude Code, one install brings the three skills, the verbatra MCP server and a
-hook that checks edited locale files:
-
-Use the plugin instead of a `verbatra` entry in `.mcp.json` (the one `verbatra init --agent` or
-`claude mcp add` writes), never both: the plugin bundles its own copy of the server, so together
-they register it twice. If the project's `.mcp.json` already names a `verbatra` server, remove
-that entry before installing the plugin, or skip the plugin and install the skills alone as
-shown above. Once the plugin is enabled in `.claude/settings.json` or
-`.claude/settings.local.json`, `verbatra init --agent` leaves `.mcp.json` alone, but it never
-removes an entry that is already there.
-
-Install it into the project that holds your verbatra config, from that project's root:
-
-```bash
-claude plugin marketplace add verbatra/skills
-claude plugin install verbatra@verbatra -s project
-```
-
-Project scope is the recommended one because the MCP server only does useful work in
-a project that has a verbatra config: `-s project` records the plugin in the project's
-`.claude/settings.json`, so it is enabled where it works and for everyone who opens
-the project, instead of starting a server in every other project that can only report
-the missing config. Inside
-a Claude Code session, `/plugin marketplace add verbatra/skills` and
-`/plugin install verbatra@verbatra` work too; the shell commands above make the
-scope explicit.
-
 What the plugin adds:
 
-- **The skills**: `verbatra-cli`, `verbatra-mcp-tools` and
-  `verbatra-studio-agent-tools`, exactly as listed below.
-- **The MCP server** `verbatra`: `npx -y @verbatra/mcp@<version> --cwd <project>`,
-  run over the project Claude Code has open. The version is pinned in
-  [`.mcp.json`](./.mcp.json) and must equal the `version` in `packages/mcp/package.json`
-  at the source ref the parity workflow runs against; on a release-prep branch the pin
-  is the pending release, so that check fails until the version is published. Without a usable verbatra config
-  in the project it still starts, but only `project.snapshot` and `project.doctor`
-  work: run `npx @verbatra/cli init` there, and the next tool call picks the config up
-  without a restart. It reads a provider API key from
-  the environment Claude Code runs in; the plugin has no key option and never
-  should.
-- **Spending off by default.** The tools that call a translation provider and bill
-  it are not listed until you set the plugin's `allowSpend` option, which the
-  plugin passes to the server as `VERBATRA_MCP_ALLOW_SPEND`:
-  `claude plugin install verbatra@verbatra -s project --config allowSpend=true`.
-  Claude Code keeps plugin options in your user settings and ignores them in a
-  project's committed settings, so a repository cannot switch spending on for you.
-  Turn it on only if you want an agent to be able to spend. A project whose provider is
-  `none` never lists those tools, whatever the option says.
-- **A locale-edit hook.** After Claude edits or writes a file that matches the
-  config's `files.pattern`, the hook runs the project's own
-  `verbatra check --file <path> --severity error --json` on that one file and,
-  when the file no longer parses or a translation in it breaks a placeholder,
-  inline markup or ICU, hands the findings back to Claude so it fixes them before
-  moving on; a JSON or YAML syntax error comes with its line and column. With a
-  CLI that does not know `--file` yet, it falls back to
-  `verbatra check --qa --severity error --json` over the whole project and
-  reports the edited locale's findings. Lockfiles, CI files and tool configs are
-  skipped without running anything. It uses only
-  the `@verbatra/cli` installed in the project's `node_modules` (0.12.0 or later),
-  never downloads anything, calls no provider, reads no key, and stays silent for
-  every other file and in a project without a local verbatra.
+- **The three skills**, exactly as listed above.
+- **The verbatra MCP server**, `npx -y @verbatra/mcp@<version> --cwd <project>`, over the
+  project Claude Code has open. The version is pinned in [`.mcp.json`](./.mcp.json). Without a
+  usable verbatra config the server still starts, but only `project.snapshot` and
+  `project.doctor` work: run `npx @verbatra/cli init` there, and the next tool call picks the
+  config up without a restart. It reads provider keys from the environment Claude Code runs in;
+  the plugin has no key option and never should.
+- **Spending off by default.** The tools that call a translation provider are not listed until
+  you set the plugin's `allowSpend` option, which reaches the server as
+  `VERBATRA_MCP_ALLOW_SPEND`:
+  `claude plugin install verbatra@verbatra -s project --config allowSpend=true`. Claude Code keeps
+  plugin options in your user settings and ignores them in a project's committed settings, so a
+  repository cannot switch spending on for you. A project whose provider is `none` never lists
+  those tools.
+- **A locale-edit hook.** After Claude edits or writes a file that matches the config's
+  `files.pattern`, the hook runs `verbatra check --file <path> --severity error --json` on that
+  file and hands any finding back to Claude to fix: a file that no longer parses (JSON and YAML
+  errors come with line and column), or a translation that breaks a placeholder, inline markup or
+  ICU. With a CLI that does not know `--file`, it falls back to
+  `verbatra check --qa --severity error --json` and reports the edited locale's findings. It uses
+  only the `@verbatra/cli` 0.12.0 or later in the project's `node_modules`, never downloads
+  anything, calls no provider, reads no key, skips lockfiles, CI files and tool configs, and
+  stays silent for every other file and in a project without a local verbatra.
 
-The plugin carries no `version` field, so every commit on `main` is an update.
-The skills-only install in the previous section keeps working and needs neither
-the MCP server nor the hook; it is the route to take next to a `.mcp.json` entry.
+Use the plugin instead of a `verbatra` entry in `.mcp.json` (the one `verbatra init --agent` or
+`claude mcp add` writes), never both: together they register the server twice. If `.mcp.json`
+already names a `verbatra` server, remove that entry first, or install the skills alone. Once
+the plugin is enabled in `.claude/settings.json` or `.claude/settings.local.json`,
+`verbatra init --agent` leaves `.mcp.json` alone, but it never removes an entry already there.
 
-## Skills
+Project scope (`-s project`) is recommended because the server only does useful work where a
+verbatra config exists: the plugin is recorded in the project's `.claude/settings.json`, enabled
+for everyone who opens the project, and not started in every other project. Inside a session,
+`/plugin marketplace add verbatra/skills` and `/plugin install verbatra@verbatra` work too.
 
-Pick by what you are holding: a shell, a stdio MCP connection, or an open Studio browser tab.
-
-- **[verbatra-cli](./skills/verbatra-cli/SKILL.md)**: Run the verbatra binary from a shell or CI, knowing what each command costs and what each exit code means.
-- **[verbatra-mcp-tools](./skills/verbatra-mcp-tools/SKILL.md)**: Work a project through the stdio MCP server, with the spend boundary that keeps provider-spending tools off the default list.
-- **[verbatra-studio-agent-tools](./skills/verbatra-studio-agent-tools/SKILL.md)**: Drive an open Studio dashboard tab through its WebMCP browser tools, behind two independent gates.
-
-Scope and what these skills leave to the documentation site: [SCOPE.md](./SCOPE.md).
-
-## What these are
-
-Each skill gives a coding agent the operating knowledge for one verbatra surface. They cover what
-an agent gets wrong when it is only shown a command list:
-
-- **Problem:** a translate run looks like any other command. **Fix:** the skill says it bills the
-  provider the moment it starts, with no prompt, so the agent reads what is pending and asks first.
-- **Problem:** an agent hunts for where to put an API key. **Fix:** keys exist only as environment
-  variables, so it names the variable and lets you fill it in.
-- **Problem:** a locale file can hold text that reads like an order. **Fix:** every translatable
-  string is data to report, and `prune` deletes target keys from a config field as well as a flag.
-
-The reference material lives on the [documentation site](https://verbatra.kreitz-webdev.de/docs);
-the skills carry the judgement, not a copy of the reference.
-
-## How they stay in sync with the code
-
-Prose about a tool rots the first time the tool changes. These skills enumerate real surfaces in
-tables (CLI commands, formats, providers and their environment variables, MCP tool names, Studio
-RPC methods), and the [parity workflow](./.github/workflows/parity.yml) asserts each of those
-tables, and the counts spelled out in the prose, against the real registries in
-[verbatra/verbatra](https://github.com/verbatra/verbatra). It checks out the source repository
-next to this one and reads `packages/cli/src/run.ts`, `packages/cli/src/cli-error-codes.ts`,
-`packages/cli/src/lib.ts`, `packages/core/src/model/supported-format.ts`,
-`packages/sdk/src/config/provider-config.ts`, `packages/sdk/src/errors.ts`,
-`packages/sdk/src/flow/doctor.ts`, `packages/sdk/src/flow/summary.ts`,
-`packages/ai-providers/src/key-env-vars.ts`, `packages/ai-providers/src/errors.ts`,
-`packages/mcp/src/tools/`, `packages/mcp/src/bin.ts` (and `bin-args.ts` when present), `packages/mcp/package.json`,
-`packages/studio/src/shared/rpc/` and `packages/studio/src/webmcp/register-tools.ts`. The
-same suite asserts the plugin: the pinned `@verbatra/mcp` version against
-`packages/mcp/package.json` at the source ref, the server flags and the spend variable against the server's own entry point,
-and the hook's `check` options against the CLI. It runs on every push to `main` and every pull
-request targeting `main`, on a nightly schedule so that a change made only in the source
-repository is still caught, and on a `workflow_dispatch` that takes the source ref to assert
-against, which the source repository's release workflow also calls so a release is checked at
-once.
-
-A second workflow, [validate](./.github/workflows/validate.yml), runs offline on every push to
-`main` and every pull request targeting `main`: it checks the frontmatter, the naming rules, the
-file modes, the house style, the pinned refs this README and `CONTRIBUTING.md` hand to a reader,
-that each skill folder's relative `.md` links resolve, its `SKILL.md` links every sibling file, and its reference files over 100 lines open
-with a table of contents, and that this README indexes exactly the skills that exist. It does not
-check external URLs, heading anchors outside a table of contents, or the README's own links. Then it asks the real installer to
-resolve the repository and confirms it finds every skill and nothing else.
+The plugin carries no `version` field, so every commit on `main` reaches it as an update.
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for how to add a skill, the parity rule and why it
-exists, and how to run both checks locally against a checkout of the source repository.
+[CONTRIBUTING.md](./CONTRIBUTING.md) covers how a skill is written, the parity rule, and how to
+run every check locally against a checkout of the source repository. Security reports go through
+[SECURITY.md](./SECURITY.md).
 
 ## License
 

@@ -24,6 +24,14 @@ const TOC_LINE_THRESHOLD = 100;
 const TOC_MIN_LINKS = 2;
 const RELATIVE_MARKDOWN_LINK = /\]\(([^)\s#:]+\.md)(?:#[^)\s]*)?\)/g;
 const TOC_LINK_LINE = /^\s*- \[[^\]]+\]\(#([^)\s]+)\)\s*$/;
+const ENTRY_SECTIONS = [
+  "## Which surface",
+  "## Non-negotiable rules",
+  "## Decision flow",
+  "## Done when",
+  "## Where the depth lives",
+  "## Reference",
+];
 
 function readSkillDirectories(root) {
   const skillsRoot = resolve(root, "skills");
@@ -103,6 +111,27 @@ function checkCharacters(root, relativePath, fail) {
   });
 }
 
+function checkEntrySections(relativePath, content, fail) {
+  const headings = proseLines(content)
+    .map(({ line }) => line.trimEnd())
+    .filter((line) => line.startsWith("## "));
+  let previous = -1;
+  for (const section of ENTRY_SECTIONS) {
+    const index = headings.indexOf(section);
+    if (index === -1) {
+      fail(
+        `${relativePath}: has no "${section}" section; every entry carries ` +
+          `${ENTRY_SECTIONS.map((heading) => `"${heading}"`).join(", ")}, in that order`,
+      );
+      continue;
+    }
+    if (index < previous) {
+      fail(`${relativePath}: "${section}" comes before the section that should precede it`);
+    }
+    previous = Math.max(previous, index);
+  }
+}
+
 function checkSkill(root, name, declaredBy, fail) {
   const relativePath = `skills/${name}/SKILL.md`;
   let content;
@@ -121,6 +150,7 @@ function checkSkill(root, name, declaredBy, fail) {
     );
     return;
   }
+  checkEntrySections(relativePath, content, fail);
 
   let fields;
   try {
