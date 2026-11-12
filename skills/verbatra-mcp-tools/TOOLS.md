@@ -37,7 +37,7 @@ operator granted spend.
 | `review.approve` | always | Record, only on the user's explicit instruction, that a named person accepts one key's current translation. Takes `locale`, `key`, exactly one of `expectedValue` (the value the user reviewed) or `expectedHash` (its marker's hash), a required `reviewer`, and optional `lockTimeoutMs`. No provider call. |
 | `review.reject` | always | Record, only on the user's explicit instruction, that a named person refuses one key's current translation; the value is removed so the next run replaces it, except in an XLIFF project (`REVIEW_REJECT_UNSUPPORTED`). Same inputs as `review.approve`. No provider call. |
 | `usage.history` | always | Needs `@verbatra/mcp` 0.4.0 or newer. The local run history, newest first: counts, tokens and `cost` per finished run, never a key or a text. Optional `limit` (default and cap set by the server). Read-only, no provider call. Read [RESULTS.md](RESULTS.md#usage-and-cost) before you call any figure free or complete. |
-| `usage.summary` | always | Read the token usage and budget outcome left behind by the last run. |
+| `usage.summary` | always | Read the token usage and budget outcome left behind by the last run. An `incomplete` field (`failed`, `partial`) means that run left locales unfinished. |
 
 ## Shared inputs and errors
 
