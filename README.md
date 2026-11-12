@@ -56,7 +56,8 @@ npx skills@latest add verbatra/skills --skill '*' -a claude-code -y
 ```
 
 Swap `claude-code` for the installer's id of your agent, such as `codex`, `cursor` or
-`gemini-cli`, or leave `-a` out to choose interactively. Repeat
+`gemini-cli`, or leave out both `-a claude-code` and `-y` to choose interactively (`-y` alone
+makes the installer pick agents for you). Repeat
 `--skill <name>` instead of `'*'` to take a subset, add `-g` to install for your user rather than
 the project, and `--copy` for editable copies instead of symlinks. Update with
 `npx skills@latest update`.
