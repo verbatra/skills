@@ -38,9 +38,9 @@ play.
 
 Pick one route per agent. Installing both the plugin and the skills gives every skill twice.
 
-**Claude Code: the plugin** (recommended). Run it from the root of the project that holds your
-verbatra config. It brings the three skills, the verbatra MCP server with spending off, and a
-hook that checks locale files Claude edits ([details](#the-claude-code-plugin)):
+**Claude Code: the plugin.** Run it from the root of the project that holds your verbatra
+config. It brings the three skills, the verbatra MCP server with spending off, and a hook that
+checks locale files Claude edits ([details](#claude-code-plugin)):
 
 ```bash
 claude plugin marketplace add verbatra/skills
@@ -52,11 +52,11 @@ Update with `claude plugin update verbatra@verbatra -s project`, then restart Cl
 **Any agent: the skills alone**, through the [skills](https://skills.sh) installer:
 
 ```bash
-npx skills@latest add verbatra/skills --skill '*' -a <agent> -y
+npx skills@latest add verbatra/skills --skill '*' -a claude-code -y
 ```
 
-`<agent>` is the installer's id for your agent, such as `claude-code`, `codex`, `cursor` or
-`gemini-cli`; leave `-a` out to choose interactively. Repeat
+Swap `claude-code` for the installer's id of your agent, such as `codex`, `cursor` or
+`gemini-cli`, or leave `-a` out to choose interactively. Repeat
 `--skill <name>` instead of `'*'` to take a subset, add `-g` to install for your user rather than
 the project, and `--copy` for editable copies instead of symlinks. Update with
 `npx skills@latest update`.
@@ -118,7 +118,7 @@ A second workflow, [validate](./.github/workflows/validate.yml), checks the fron
 links, house style and README index offline, then asks the real installer to resolve the
 repository and confirms it finds every skill and nothing else.
 
-## The Claude Code plugin
+## Claude Code plugin
 
 What the plugin adds:
 
