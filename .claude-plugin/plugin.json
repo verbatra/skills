@@ -1,7 +1,7 @@
 {
   "name": "verbatra",
   "displayName": "verbatra",
-  "description": "Drive verbatra from Claude Code: the CLI, MCP and Studio skills, the verbatra MCP server over the current project with provider spending off by default, and a hook that reports broken placeholders, markup and ICU after a locale file is edited.",
+  "description": "Drive verbatra from Claude Code: the CLI, MCP and Studio skills, the verbatra MCP server over the current project with provider spending off by default, and a hook that reports broken syntax, placeholders, markup and ICU after a locale file is edited.",
   "author": {
     "name": "Mario Kreitz",
     "url": "https://github.com/verbatra"
